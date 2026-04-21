@@ -7,4 +7,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(kepler
     src/main.cpp
+    src/sgp4.cpp
 )
