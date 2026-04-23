@@ -6,6 +6,7 @@
 
 // TODO:
 // completely rewrite, using this:
+// https://advancedssa.com/media/CoordinateFrames-SSAworkshop2018.61f87636.pdf
 // https://github.com/neuromorphicsystems/sgp4/tree/master as a reference
 // https://github.com/natronics/rust-sgp4/blob/master/src/lib.rs
 

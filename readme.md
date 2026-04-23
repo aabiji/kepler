@@ -1,40 +1,34 @@
 # Low earth orbit visualizer
 
-Should I just use this: https://github.com/neuromorphicsystems/sgp4/ as the sgp4 propagator and move on with my life?
-How many lines of code would be left for me to actually implement?
-
 Inspiration: https://orbital-watch-pink.vercel.app/
 
-Post on X:
-```
-I'm back from my silence. I might come back to the chemical visualizer, but
-now I've switched projects. Now I'm working on a satellite orbit visualizer.
-After implementing pages and pages of math I can finally say that my SGP propagator is working
-```
+Roadmap:
+- Use the [sgp4](https://github.com/neuromorphicsystems/sgp4/) crate to propagate orbital data
 
-In C++ with OpenGL, everything from scratch.
+    - Scale the propagation to thousands of satellites in 60 fps
+        - Maybe compute every n seconds and simply interpolate the positions?
 
-- Read CSV data to get satellite info
+- Visualizer using WebGPU:
 
-- Implement the SGP4 algorithm to predict their motions
-    - Test and benchmark against existing implementations:
+    - Basic space skybox
 
-- Do all of this optimally for all the satellites in real time
+    - Texture a sphere using a texture of the Earth
 
-- Visualize them moving around the earth
-   - Render the Earth realistically (wrap a heightmap around a sphere and texture correctly)
+    - Zoom a camera in/out, orbit around the earth
 
-   - Show the trajectories of the satellites
+    - Render each satellite as a dot
+        - Instanced rendering of circles
 
-   - Click satellites to show info on them
+    - Trace the trajectories of the satellites using a curved line
 
-   - Filter satellites
+- Basic UI using EGUI:
 
-   - Select specific satellites to track
+    - Filter satellites
+        - Select specific satellites to track
 
-   - Zoom camera in/out, orbit around the earth
+    - Add a button to zoom in on your GPS position and highlight the satellites overhead the specific region
 
-- Add a button to zoom in on your GPS position and view the satellites overhead
+- Port to WASM, release project
 
 ---
 
