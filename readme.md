@@ -20,6 +20,7 @@ Roadmap:
 
     - Render each satellite as a dot
         - Instanced rendering of circles and spheres
+        - Don't render satellites that are behind the sphere
 
     - Trace the trajectories of the satellites using a curved line
 
