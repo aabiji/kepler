@@ -19,7 +19,7 @@ Roadmap:
     - Zoom a camera in/out, orbit around the earth
 
     - Render each satellite as a dot
-        - Instanced rendering of circles
+        - Instanced rendering of circles and spheres
 
     - Trace the trajectories of the satellites using a curved line
 
@@ -38,7 +38,7 @@ Roadmap:
 - Drag: An opposing force exterted by the Earth's atmosphere on objects orbiting in LEO.
 - SGP4: Simplified general pertubations 4
 - TLE: Two-line element set. Although it's the de facto standard, it's very outdated (Y2K problems, running out of satellite identifiers, etc), so instead we'll be parsing CSV
-
+- RAAN: The angle between the vernal equinox and the ascending node.
 - The eccentricty of an ellipse is the distance between the two foci [-sqrt(a^2 - b^2), -sqrt(a^2 - b^2)], divided by the semi major axis.
 
 - Periapsis: Point in an orbit closest to the center of mass of a system.
