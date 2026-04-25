@@ -52,9 +52,7 @@ Roadmap:
 
 ---
 
-- [Texture mapping](https://people.computing.clemson.edu/~dhouse/courses/405/notes/texture-maps.pdf)
-- [Planet Earth Texture Mapping](https://planetpixelemporium.com/earth8081.html)
-- [Collision avoidance](https://advancedssa.com/media/CoordinateFrames-SSAworkshop2018.61f87636.pdf)
+- [Creating an icosphere mesh in code](http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html)
 - [Planetary Orbits](https://science.nasa.gov/learn/basics-of-space-flight/chapter5-1/)
 - [Supplemental GP Element Sets](https://celestrak.org/NORAD/elements/supplemental/index.php?FORMAT=csv)
 - [United States Space Command](https://en.wikipedia.org/wiki/United_States_Space_Command)
@@ -62,7 +60,6 @@ Roadmap:
 - [Satellite drag](https://www.swpc.noaa.gov/impacts/satellite-drag)
 - [SPACETRACK REPORT NO. 3](https://celestrak.org/NORAD/documentation/spacetrk.pdf)
 - [Revisiting Spacetrack Report #3: Rev 2](https://celestrak.org/publications/AIAA/2006-6753/AIAA-2006-6753-Rev2.pdf)
-- [Two-line element set](https://en.wikipedia.org/wiki/Two-line_element_sete
+- [Two-line element set](https://en.wikipedia.org/wiki/Two-line_element_sete)
 - [A New Way to Obtain GP Data (aka TLEs)](https://celestrak.org/NORAD/documentation/gp-data-formats.php)
 - [Classical/Keplerian Orbital Elements](https://www.youtube.com/watch?v=AReKBoiph6g)
-- [Keplerian Orbital Elements](https://nicholasnatsoulas.com/orbital-elements.html)
