@@ -1,18 +1,37 @@
-#include <assert.h>
 #include <fstream>
 
+#include "debug.h"
 #include "satellite.h"
+
+void handle_error(perturb::Sgp4Error err) {
+  std::string msg = "";
+
+  // clang-format off
+  switch (err) {
+    case perturb::Sgp4Error::MEAN_ELEMENTS: msg = "Bad mean elements"; break;
+    case perturb::Sgp4Error::MEAN_MOTION: msg = "Bad mean motion"; break;
+    case perturb::Sgp4Error::PERT_ELEMENTS: msg = "Bad pertubation elements"; break;
+    case perturb::Sgp4Error::SEMI_LATUS_RECTUM: msg = "Bad semi latus rectum"; break;
+    case perturb::Sgp4Error::EPOCH_ELEMENTS_SUB_ORBITAL: msg = "Bad sub orbital epoch elements"; break;
+    case perturb::Sgp4Error::DECAYED: msg = "Decayed prediction"; break;
+    case perturb::Sgp4Error::INVALID_TLE: msg = "Invalid TLE"; break;
+    default: msg = "Uknown sgp4 error"; break;
+  };
+  // clang-format on
+
+  if (err != perturb::Sgp4Error::NONE)
+    THROW_ERROR("ERROR: {}", msg);
+}
 
 Satellite::Satellite(std::string name, std::string id,
                      perturb::TwoLineElement info)
     : name(name), id(id), model(perturb::Satellite(info)) {
-  assert(model.last_error() == perturb::Sgp4Error::NONE);
+  handle_error(model.last_error());
 }
 
 void Satellite::propagate(int minutes_since_epoch) {
   perturb::StateVector s;
-  auto ret = model.propagate_from_epoch(minutes_since_epoch, s);
-  assert(ret == perturb::Sgp4Error::NONE);
+  handle_error(model.propagate_from_epoch(minutes_since_epoch, s));
   position = glm::vec3(s.position[0], s.position[1], s.position[2]);
   velocity = glm::vec3(s.velocity[0], s.velocity[1], s.velocity[2]);
 }
@@ -45,7 +64,8 @@ double epoch_day_of_year(std::string timestamp) {
 
 std::vector<Satellite> read_satellite_data(const char *csv_path) {
   std::ifstream file(csv_path);
-  assert(file.good() && file.is_open());
+  if (!file.good() || !file.is_open())
+    THROW_ERROR("Failed to open {}", csv_path);
 
   std::vector<Satellite> satellites;
 

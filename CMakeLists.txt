@@ -55,10 +55,13 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
 
 add_executable(${PROJECT_NAME}
+    src/debug.cpp
     src/main.cpp
-    src/satellite.cpp
     src/mesh.cpp
+    src/satellite.cpp
+    src/shader.cpp
 )
+target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_link_libraries(${PROJECT_NAME} perturb imgui glm glfw glad stb)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
