@@ -3,20 +3,19 @@
 
 #include "mesh.h"
 
-void InstancedMesh::init_buffers() {
+void InstancedMesh::init_buffers(int num_instances) {
   glGenVertexArrays(1, &vao);
-  glGenBuffers(1, &vbo);
-  glGenBuffers(1, &ebo);
-  glGenBuffers(1, &model_matrices_buffer);
+  glCreateBuffers(1, &vbo);
+  glCreateBuffers(1, &ebo);
+  glCreateBuffers(1, &ssbo);
 
-  glNamedBufferStorage(model_matrices_buffer,
-                       sizeof(glm::mat4) * model_matrices.size(), nullptr,
+  glBindVertexArray(vao);
+  glNamedBufferStorage(ssbo, sizeof(InstanceData) * num_instances, nullptr,
                        GL_DYNAMIC_STORAGE_BIT);
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex),
                vertices.data(), GL_STATIC_DRAW);
-  glBindVertexArray(vao);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
@@ -37,21 +36,20 @@ void InstancedMesh::init_buffers() {
 
 InstancedMesh::~InstancedMesh() {
   glDeleteVertexArrays(1, &vao);
-  glDeleteBuffers(1, &model_matrices_buffer);
+  glDeleteBuffers(1, &ssbo);
   glDeleteBuffers(1, &vbo);
   glDeleteBuffers(1, &ebo);
 }
 
 void InstancedMesh::render() {
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, model_matrices_buffer);
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model_matrices_buffer);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
   glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                  model_matrices.size() * sizeof(glm::mat4),
-                  model_matrices.data());
+                  data.size() * sizeof(InstanceData), data.data());
 
   glBindVertexArray(vao);
   glDrawElementsInstanced(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0,
-                          model_matrices.size());
+                          data.size());
 }
 
 InstancedMesh generate_unit_sphere(int longitudes, int lattitudes) {
@@ -98,7 +96,6 @@ InstancedMesh generate_unit_sphere(int longitudes, int lattitudes) {
     }
   }
 
-  mesh.init_buffers();
   return mesh;
 }
 
@@ -112,18 +109,17 @@ InstancedMesh generate_circle_mesh(int num_fans) {
 
   for (int i = 0; i < num_fans; i++) {
     Vertex v;
-    float angle = i * ((2.0 * M_PI) / (float)(num_fans - 2));
+    float angle = i * ((2.0 * M_PI) / (float)num_fans);
     v.position = glm::vec3(std::cos(angle), std::sin(angle), 0);
     v.uv = v.normal = glm::vec3(0.0, 0.0, 0.0);
     mesh.vertices.push_back(v);
   }
 
-  for (int i = 1; i < num_fans - 1; i++) {
+  for (int i = 1; i <= num_fans; i++) {
     mesh.indices.push_back(0);
     mesh.indices.push_back(i);
-    mesh.indices.push_back(i + 1);
+    mesh.indices.push_back((i % num_fans) + 1);
   }
 
-  mesh.init_buffers();
   return mesh;
 }

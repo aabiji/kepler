@@ -10,18 +10,22 @@ struct Vertex {
   glm::vec3 normal;
 };
 
+// NOTE: See vertex.glsl
+struct InstanceData {
+  glm::mat4 model_matrix;
+  glm::vec4 color;
+};
+
 struct InstancedMesh {
   ~InstancedMesh();
 
-  void init_buffers();
   void render();
+  void init_buffers(int num_instances);
 
   std::vector<Vertex> vertices;
   std::vector<unsigned int> indices;
-  std::vector<glm::mat4> model_matrices;
-
-  unsigned int vao, vbo, ebo;
-  unsigned int model_matrices_buffer;
+  std::vector<InstanceData> data;
+  unsigned int vao, vbo, ebo, ssbo;
 };
 
 InstancedMesh generate_unit_sphere(int longitudes, int lattitudes);

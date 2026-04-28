@@ -52,6 +52,9 @@ Roadmap:
 
 ---
 
+- [Environment Mapping & HDR Lighting In C++ Using OpenGL](https://medium.com/@mrrsff/environment-mapping-hdr-lighting-in-c-using-opengl-c0530cb12579)
+- [HDRi Space Spheremaps](https://www.spacespheremaps.com/hdr-spheremaps/)
+
 - [Shader storage buffer objects](https://ktstephano.github.io/rendering/opengl/ssbos)
 - [Creating an icosphere mesh in code](http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html)
 - [Sphere.cpp](https://gist.github.com/Pikachuxxxx/5c4c490a7d7679824e0e18af42918efc)

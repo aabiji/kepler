@@ -22,8 +22,6 @@
 // TODO:
 // - Tie up some loose ends (resizing, error handling, scale normal by normal
 //   matrix, basic phong lighting, etc) and refactor
-// - Render instanced spheres
-// - Render a basic skybox
 
 unsigned int load_shader(const char *path, int type) {
   auto size = std::filesystem::file_size(path);
@@ -77,6 +75,10 @@ public:
 
   void use() { glUseProgram(program); }
 
+  void set_bool(const char *name, bool value) {
+    glUniform1i(glGetUniformLocation(program, name), value);
+  }
+
   void set_vec3(const char *name, glm::vec3 &value) {
     glUniform3fv(glGetUniformLocation(program, name), 1, glm::value_ptr(value));
   }
@@ -122,14 +124,62 @@ glm::quat rotate(glm::quat rotation, float padx, float pady, float dx,
   return glm::normalize(yaw * pitch * rotation);
 }
 
-glm::mat4 satellite_to_model(Satellite s) {
+void gl_debug_callback(GLenum src, GLenum type, unsigned int id,
+                       GLenum severity, GLsizei _length, const char *message,
+                       const void *_user_param) {
+  // Ignore insignificant error/warning codes
+  // clang-format off
+  if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
+  (void)_length;
+  (void)_user_param;
+
+  std::cout << "---------------" << std::endl;
+  std::cout << "Debug message (" << id << "): " <<  message << std::endl;
+
+  switch (src)
+  {
+      case GL_DEBUG_SOURCE_API:             std::cout << "Source: API"; break;
+      case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   std::cout << "Source: Window System"; break;
+      case GL_DEBUG_SOURCE_SHADER_COMPILER: std::cout << "Source: Shader Compiler"; break;
+      case GL_DEBUG_SOURCE_THIRD_PARTY:     std::cout << "Source: Third Party"; break;
+      case GL_DEBUG_SOURCE_APPLICATION:     std::cout << "Source: Application"; break;
+      case GL_DEBUG_SOURCE_OTHER:           std::cout << "Source: Other"; break;
+  } std::cout << std::endl;
+
+  switch (type)
+  {
+      case GL_DEBUG_TYPE_ERROR:               std::cout << "Type: Error"; break;
+      case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: std::cout << "Type: Deprecated Behaviour"; break;
+      case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  std::cout << "Type: Undefined Behaviour"; break;
+      case GL_DEBUG_TYPE_PORTABILITY:         std::cout << "Type: Portability"; break;
+      case GL_DEBUG_TYPE_PERFORMANCE:         std::cout << "Type: Performance"; break;
+      case GL_DEBUG_TYPE_MARKER:              std::cout << "Type: Marker"; break;
+      case GL_DEBUG_TYPE_PUSH_GROUP:          std::cout << "Type: Push Group"; break;
+      case GL_DEBUG_TYPE_POP_GROUP:           std::cout << "Type: Pop Group"; break;
+      case GL_DEBUG_TYPE_OTHER:               std::cout << "Type: Other"; break;
+  } std::cout << std::endl;
+
+  switch (severity)
+  {
+      case GL_DEBUG_SEVERITY_HIGH:         std::cout << "Severity: high"; break;
+      case GL_DEBUG_SEVERITY_MEDIUM:       std::cout << "Severity: medium"; break;
+      case GL_DEBUG_SEVERITY_LOW:          std::cout << "Severity: low"; break;
+      case GL_DEBUG_SEVERITY_NOTIFICATION: std::cout << "Severity: notification"; break;
+  } std::cout << std::endl;
+  std::cout << std::endl;
+  // clang-format on
+}
+
+InstanceData satellite_to_model(Satellite s) {
   s.propagate(0);
   glm::mat4 scale = glm::scale(glm::mat4(1.0), glm::vec3(0.01, 0.01, 0.01));
-  // glm::mat4 translate = glm::translate(glm::mat4(0.0), s.position * 0.0001f);
-  glm::mat4 translate =
-      glm::translate(glm::mat4(0.0), glm::vec3(0.0, 0.0, 0.0));
-  return translate * scale;
+  glm::mat4 translate = glm::translate(glm::mat4(1.0), s.position * 0.0001f);
+  InstanceData instance;
+  instance.model_matrix = translate * scale;
+  instance.color = glm::vec4(0.0, 1.0, 0.0, 1.0);
+  return instance;
 }
+
 int main() {
   auto satellites = read_satellite_data("../data/starlink.csv");
 
@@ -145,9 +195,15 @@ int main() {
 
   glfwMakeContextCurrent(window);
   assert(gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) != 0);
+  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 
   glViewport(0, 0, window_width, window_height);
-  glEnable(GL_DEPTH_TEST);
+
+  glEnable(GL_DEBUG_OUTPUT);
+  glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+  glDebugMessageCallback(gl_debug_callback, nullptr);
+  glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr,
+                        GL_TRUE);
 
   float aspect_ratio = (float)window_width / (float)window_height;
   Camera camera(aspect_ratio);
@@ -155,19 +211,19 @@ int main() {
   {
     Shader shader("../src/vertex.glsl", "../src/fragment.glsl");
 
-    /*
+    InstancedMesh globe = generate_unit_sphere(32, 32);
+    globe.init_buffers(1);
+
+    InstancedMesh circles = generate_circle_mesh(10);
+    circles.init_buffers(satellites.size());
+
     glm::quat globe_rotation = glm::quat(1.0, 0.0, 0.0, 0.0);
     glm::mat4 globe_scale =
         glm::scale(glm::mat4(1.0), glm::vec3(2.0, 2.0, 2.0));
-    InstancedMesh globe = generate_unit_sphere(32, 32);
-    globe.model_matrices.push_back(glm::mat4(1.0));
-    */
+    globe.data.push_back(InstanceData());
 
-    InstancedMesh circles = generate_circle_mesh(10);
     std::transform(satellites.begin(), satellites.end(),
-                   std::back_inserter(circles.model_matrices),
-                   satellite_to_model);
-    std::cout << circles.model_matrices.size() << "\n";
+                   std::back_inserter(circles.data), satellite_to_model);
 
     const char *path = "../data/8081_earthmap4k.jpg";
     int width = 0, height = 0, channels = 0;
@@ -200,19 +256,17 @@ int main() {
       if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.move(1);
 
-      /*
       double x, y;
       glfwGetCursorPos(window, &x, &y);
       bool mouse_down =
           glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
       if (mouse_down) {
         globe_rotation =
-            rotate(globe_rotation, 0.01, 0.005, x - prev_x, y - prev_y);
-        globe.model_matrices[0] = glm::mat4(globe_rotation) * globe_scale;
+            rotate(globe_rotation, 0.01, 0.0025, x - prev_x, y - prev_y);
+        globe.data[0].model_matrix = glm::mat4(globe_rotation) * globe_scale;
       }
       prev_x = x;
       prev_y = y;
-      */
 
       glClearColor(0.0, 0.0, 0.0, 1.0);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -227,7 +281,12 @@ int main() {
       shader.set_mat4("projection", p);
       shader.set_mat4("view", v);
 
-      // globe.render();
+      glEnable(GL_DEPTH_TEST);
+      shader.set_bool("use_texture", true);
+      globe.render();
+
+      glDisable(GL_DEPTH_TEST);
+      shader.set_bool("use_texture", false);
       circles.render();
 
       glfwSwapBuffers(window);
