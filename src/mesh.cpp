@@ -1,18 +1,68 @@
 #include <cmath>
 #include <glad/glad.h>
 
+#include "debug.h"
 #include "mesh.h"
 
-void InstancedMesh::init_buffers(int num_instances) {
+Skybox::Skybox() {
+  glm::vec3 cube_positions[] = {
+      // +X (right)
+      glm::vec3(1, -1, -1), glm::vec3(1, -1, 1), glm::vec3(1, 1, 1),
+      glm::vec3(1, -1, -1), glm::vec3(1, 1, 1), glm::vec3(1, 1, -1),
+
+      // -X (left)
+      glm::vec3(-1, -1, 1), glm::vec3(-1, -1, -1), glm::vec3(-1, 1, -1),
+      glm::vec3(-1, -1, 1), glm::vec3(-1, 1, -1), glm::vec3(-1, 1, 1),
+
+      // +Y (top)
+      glm::vec3(-1, 1, -1), glm::vec3(1, 1, -1), glm::vec3(1, 1, 1),
+      glm::vec3(-1, 1, -1), glm::vec3(1, 1, 1), glm::vec3(-1, 1, 1),
+
+      // -Y (bottom)
+      glm::vec3(-1, -1, 1), glm::vec3(1, -1, 1), glm::vec3(1, -1, -1),
+      glm::vec3(-1, -1, 1), glm::vec3(1, -1, -1), glm::vec3(-1, -1, -1),
+
+      // +Z (front)
+      glm::vec3(-1, -1, 1), glm::vec3(-1, 1, 1), glm::vec3(1, 1, 1),
+      glm::vec3(-1, -1, 1), glm::vec3(1, 1, 1), glm::vec3(1, -1, 1),
+
+      // -Z (back)
+      glm::vec3(1, -1, -1), glm::vec3(1, 1, -1), glm::vec3(-1, 1, -1),
+      glm::vec3(1, -1, -1), glm::vec3(-1, 1, -1), glm::vec3(-1, -1, -1)};
+
+  glGenVertexArrays(1, &vao);
+  glCreateBuffers(1, &vbo);
+
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(cube_positions), cube_positions,
+               GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+  glEnableVertexAttribArray(0);
+}
+
+Skybox::~Skybox() {
+  glDeleteVertexArrays(1, &vao);
+  glDeleteBuffers(1, &vbo);
+}
+
+void Skybox::render() {
+  glBindVertexArray(vao);
+  glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+void InstancedMesh::init_buffers() {
+  if (data.size() == 0)
+    THROW_ERROR("Must provide instance data");
+
   glGenVertexArrays(1, &vao);
   glCreateBuffers(1, &vbo);
   glCreateBuffers(1, &ebo);
   glCreateBuffers(1, &ssbo);
 
   glBindVertexArray(vao);
-  glNamedBufferStorage(ssbo, sizeof(InstanceData) * num_instances, nullptr,
+  glNamedBufferStorage(ssbo, sizeof(InstanceData) * data.size(), nullptr,
                        GL_DYNAMIC_STORAGE_BIT);
-
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex),
                vertices.data(), GL_STATIC_DRAW);
@@ -36,9 +86,9 @@ void InstancedMesh::init_buffers(int num_instances) {
 
 InstancedMesh::~InstancedMesh() {
   glDeleteVertexArrays(1, &vao);
-  glDeleteBuffers(1, &ssbo);
   glDeleteBuffers(1, &vbo);
   glDeleteBuffers(1, &ebo);
+  glDeleteBuffers(1, &ssbo);
 }
 
 void InstancedMesh::render() {
@@ -52,7 +102,7 @@ void InstancedMesh::render() {
                           data.size());
 }
 
-InstancedMesh generate_unit_sphere(int longitudes, int lattitudes) {
+InstancedMesh create_unit_sphere(int longitudes, int lattitudes) {
   InstancedMesh mesh;
 
   // Add vertices
@@ -99,7 +149,7 @@ InstancedMesh generate_unit_sphere(int longitudes, int lattitudes) {
   return mesh;
 }
 
-InstancedMesh generate_circle_mesh(int num_fans) {
+InstancedMesh create_circle_mesh(int num_fans) {
   InstancedMesh mesh;
 
   Vertex v;

@@ -52,9 +52,9 @@ Roadmap:
 
 ---
 
-- [Environment Mapping & HDR Lighting In C++ Using OpenGL](https://medium.com/@mrrsff/environment-mapping-hdr-lighting-in-c-using-opengl-c0530cb12579)
-- [HDRi Space Spheremaps](https://www.spacespheremaps.com/hdr-spheremaps/)
-
+- [Coordinate reference frames](https://github.com/horizonanalytic/astrora/blob/main/src/coordinates/frames.rs)
+- [Reference frames and coordinate systems](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/Tutorials/pdf/individual_docs/17_frames_and_coordinate_systems.pdf)
+- [Cubemaps](https://learnopengl.com/Advanced-OpenGL/Cubemaps)
 - [Shader storage buffer objects](https://ktstephano.github.io/rendering/opengl/ssbos)
 - [Creating an icosphere mesh in code](http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html)
 - [Sphere.cpp](https://gist.github.com/Pikachuxxxx/5c4c490a7d7679824e0e18af42918efc)
@@ -69,3 +69,5 @@ Roadmap:
 - [A New Way to Obtain GP Data (aka TLEs)](https://celestrak.org/NORAD/documentation/gp-data-formats.php)
 - [Classical/Keplerian Orbital Elements](https://www.youtube.com/watch?v=AReKBoiph6g)
 - [Introduction to spherical coordinates, Multivariable Calculus](https://www.youtube.com/watch?v=8x_UjFUySRg)
+- [Solar Textures](https://www.solarsystemscope.com/textures/)
+- [Deep star maps 2020](https://svs.gsfc.nasa.gov/4851)

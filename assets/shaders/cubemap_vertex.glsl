@@ -1,12 +1,14 @@
 #version 460 core
 
-out vec2 texture_coords;
+layout(location = 0) in vec3 in_pos;
+out vec3 texture_coords;
+
+uniform mat4 projection;
+uniform mat4 view;
 
 void main() {
-  // Sample a fullscreen vertex
-  float x = float((gl_VertexID & 1) << 2);
-  float y = float((gl_VertexID & 2) << 1);
-  texture_coords.x = x * 0.5;
-  texture_coords.y = y * 0.5;
-  gl_Position = vec4(x - 1.0, y - 1.0, 0.0, 1.0);
+    texture_coords = in_pos;
+    vec4 pos = projection * view * vec4(in_pos, 1.0);
+    // This forces the z component to be 1.0, making the skybox render behind everything else
+    gl_Position = pos.xyww;
 }

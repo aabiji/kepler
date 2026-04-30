@@ -12,24 +12,48 @@
 #include "satellite.h"
 #include "shader.h"
 
+/*
+Refactor checklist (the code right now is extremely messy):
+
+- merge instancedmesh and skybox?
+- don't need to store vertices + indices + instance data after they've been
+uploaded to the shader
+- shouldn't be using data.size() as the instance count
+- resize opengl viewport
+- properly distinguish camera rotation vs globe rotation
+  rotate around the cube using left/right arrow keys, rotate around view using
+mouse
+- merge the two texture constructots into one
+*/
+
 class Camera {
 public:
   explicit Camera(float aspect_ratio) {
     projection =
         glm::perspective((float)M_PI / 4.0f, aspect_ratio, 0.1f, 100.0f);
-
-    up = glm::vec3(0.0, 1.0, 0.0);
     pos = glm::vec3(0.0, 0.0, 3.0);
-    front = glm::vec3(0.0, 0.0, -1.0); // -Z goes into the screen
   }
 
-  void move(float direction) { pos += front * direction; }
+  void rotate_look_at(float dx, float dy, float sensitivity) {
+    glm::vec3 world_up = glm::vec3(0.0, 1.0, 0.0);
+    glm::vec3 world_right = current_rotation * glm::vec3(1.0, 0.0, 0.0);
+
+    glm::quat yaw = glm::angleAxis(dx * sensitivity, world_up);
+    glm::quat pitch = glm::angleAxis(dy * sensitivity, world_right);
+    current_rotation = glm::normalize(yaw * pitch * current_rotation);
+  }
+
+  glm::mat4 view_matrix() {
+    glm::vec3 front = current_rotation * glm::vec3(0.0, 0.0, -1.0);
+    glm::vec3 up = current_rotation * glm::vec3(0.0, 1.0, 0.0);
+    return glm::lookAt(pos, pos + front, up);
+  }
 
   glm::mat4 projection_matrix() { return projection; }
-  glm::mat4 view_matrix() { return glm::lookAt(pos, pos + front, up); }
 
 private:
-  glm::vec3 up, pos, front;
+  glm::vec3 pos;
+  glm::quat current_rotation;
   glm::mat4 projection;
 };
 
@@ -37,45 +61,65 @@ class Texture {
 public:
   ~Texture() { glDeleteTextures(1, &id); }
 
-  Texture(const char *path, int obj, int wrap, int unit)
-      : unit(unit), obj(obj) {
+  Texture(int id, int obj) : id(id), obj(obj) {}
+
+  static Texture from_image(const char *path) {
     int width = 0, height = 0, channels = 0;
     stbi_set_flip_vertically_on_load(true);
-    float *pixels = stbi_loadf(path, &width, &height, &channels, 4);
-    if (pixels == nullptr || channels != 4)
+    unsigned char *pixels = stbi_load(path, &width, &height, &channels, 3);
+    if (pixels == nullptr || channels != 3)
       THROW_ERROR("Failed to load {}", path);
 
+    unsigned int id;
     glGenTextures(1, &id);
-    glBindTexture(obj, id);
-    glTexParameteri(obj, GL_TEXTURE_WRAP_S, wrap);
-    glTexParameteri(obj, GL_TEXTURE_WRAP_T, wrap);
-    glTexParameteri(obj, GL_TEXTURE_WRAP_R, wrap);
-    glTexParameteri(obj, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(obj, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(obj, 0, GL_RGB, width, height, 0, GL_RGBA, GL_FLOAT, pixels);
-    glGenerateMipmap(obj);
+    glBindTexture(GL_TEXTURE_2D, id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+                 GL_UNSIGNED_BYTE, pixels);
+    glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(pixels);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    return Texture(id, GL_TEXTURE_2D);
+  }
+
+  // NOTE: the images must be in the following order: +x, -x, +y, -y, +z, -z
+  static Texture from_cubemap(const char *paths[]) {
+    unsigned int id;
+    glGenTextures(1, &id);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, id);
+
+    for (int i = 0; i < 6; i++) {
+      int width = 0, height = 0, channels = 0;
+      unsigned char *pixels =
+          stbi_load(paths[i], &width, &height, &channels, 3);
+      if (pixels == nullptr || channels != 3)
+        THROW_ERROR("Failed to load {}", paths[i]);
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height,
+                   0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+      stbi_image_free(pixels);
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    return Texture(id, GL_TEXTURE_CUBE_MAP);
   }
 
   void use() {
-    glActiveTexture(GL_TEXTURE0 + unit);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(obj, id);
   }
 
 private:
-  unsigned int id, unit, obj;
+  unsigned int id, obj;
 };
-
-glm::quat rotate(glm::quat rotation, float padx, float pady, float dx,
-                 float dy) {
-  glm::vec3 world_up = glm::vec3(0.0, 1.0, 0.0);
-  glm::vec3 world_right = rotation * glm::vec3(1.0, 0.0, 0.0);
-
-  glm::quat yaw = glm::angleAxis(dx * padx, world_up);
-  glm::quat pitch = glm::angleAxis(dy * pady, world_right);
-
-  return glm::normalize(yaw * pitch * rotation);
-}
 
 InstanceData satellite_to_model(Satellite s) {
   s.propagate(0);
@@ -88,7 +132,7 @@ InstanceData satellite_to_model(Satellite s) {
 }
 
 int main() {
-  auto satellites = read_satellite_data("../assets/starlink.csv");
+  // auto satellites = read_satellite_data("../assets/starlink.csv");
 
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -106,7 +150,7 @@ int main() {
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 
   glViewport(0, 0, window_width, window_height);
-
+  glEnable(GL_DEPTH_TEST);
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
   glDebugMessageCallback(gl_debug_callback, nullptr);
@@ -115,6 +159,10 @@ int main() {
 
   float aspect_ratio = (float)window_width / (float)window_height;
   Camera camera(aspect_ratio);
+  const char *filenames[] = {
+      "../assets/textures/cubemap/px.png", "../assets/textures/cubemap/nx.png",
+      "../assets/textures/cubemap/py.png", "../assets/textures/cubemap/ny.png",
+      "../assets/textures/cubemap/pz.png", "../assets/textures/cubemap/nz.png"};
 
   {
     Shader main_shader("../assets/shaders/main_vertex.glsl",
@@ -123,22 +171,23 @@ int main() {
     Shader cubemap_shader("../assets/shaders/cubemap_vertex.glsl",
                           "../assets/shaders/cubemap_fragment.glsl");
 
-    Texture earth_texture("../assets/textures/earthmap4k.jpg", GL_TEXTURE_2D,
-                          GL_REPEAT, 0);
+    Texture cubemap_texture = Texture::from_cubemap(filenames);
+    Texture earth_texture =
+        Texture::from_image("../assets/textures/earth/daymap.jpg");
 
-    InstancedMesh globe = generate_unit_sphere(32, 32);
-    globe.init_buffers(1);
-
-    InstancedMesh circles = generate_circle_mesh(10);
-    circles.init_buffers(satellites.size());
-
-    glm::quat globe_rotation = glm::quat(1.0, 0.0, 0.0, 0.0);
-    glm::mat4 globe_scale =
+    InstancedMesh globe = create_unit_sphere(32, 32);
+    InstanceData globe_instance;
+    globe_instance.model_matrix = // Scale
         glm::scale(glm::mat4(1.0), glm::vec3(2.0, 2.0, 2.0));
-    globe.data.push_back(InstanceData());
+    globe.data.push_back(globe_instance);
+    globe.init_buffers();
 
-    std::transform(satellites.begin(), satellites.end(),
-                   std::back_inserter(circles.data), satellite_to_model);
+    Skybox skybox;
+
+    // std::transform(satellites.begin(), satellites.end(),
+    //                std::back_inserter(circles.data), satellite_to_model);
+    // InstancedMesh circles = create_circle_mesh(10);
+    // circles.init_buffers();
 
     double prev_x = 0, prev_y = 0;
     glfwGetCursorPos(window, &prev_x, &prev_y);
@@ -147,21 +196,20 @@ int main() {
       if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
         break;
 
+      /*
       if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         camera.move(-1);
 
       if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.move(1);
+      */
 
       double x, y;
       glfwGetCursorPos(window, &x, &y);
       bool mouse_down =
           glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-      if (mouse_down) {
-        globe_rotation =
-            rotate(globe_rotation, 0.01, 0.0025, x - prev_x, y - prev_y);
-        globe.data[0].model_matrix = glm::mat4(globe_rotation) * globe_scale;
-      }
+      if (mouse_down)
+        camera.rotate_look_at(x - prev_x, y - prev_y, 0.01);
       prev_x = x;
       prev_y = y;
 
@@ -170,19 +218,30 @@ int main() {
 
       glm::mat4 p = camera.projection_matrix();
       glm::mat4 v = camera.view_matrix();
+      glm::mat4 v_no_translation = glm::mat4(glm::mat3(v));
 
+      // Render the scene
       main_shader.use();
       main_shader.set<glm::mat4>("projection", p);
       main_shader.set<glm::mat4>("view", v);
 
-      glEnable(GL_DEPTH_TEST);
       earth_texture.use();
       main_shader.set<bool>("use_texture", true);
       globe.render();
 
-      glDisable(GL_DEPTH_TEST);
-      main_shader.set<bool>("use_texture", false);
-      circles.render();
+      // glDisable(GL_DEPTH_TEST); // For drawing the 2D shapes
+      // main_shader.set<bool>("use_texture", false);
+      // circles.render();
+      // glEnable(GL_DEPTH_TEST);
+
+      // Render the skybox
+      cubemap_shader.use();
+      cubemap_shader.set<glm::mat4>("projection", p);
+      cubemap_shader.set<glm::mat4>("view", v_no_translation);
+      glDepthFunc(GL_LEQUAL);
+      cubemap_texture.use();
+      skybox.render();
+      glDepthFunc(GL_LESS);
 
       glfwSwapBuffers(window);
       glfwPollEvents();

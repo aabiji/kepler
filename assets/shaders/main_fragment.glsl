@@ -10,5 +10,5 @@ uniform sampler2D planet_texture;
 out vec4 fragment_color;
 
 void main() {
-  fragment_color = use_texture ?  texture(planet_texture, texture_coords) : color;
+    fragment_color = use_texture ? texture(planet_texture, texture_coords) : color;
 }
