@@ -32,7 +32,7 @@ void Camera::rotate_position(bool left) {
 
 void Camera::zoom(bool inwards) {
   float step = inwards ? -0.5 : 0.5;
-  orbit_distance = glm::clamp(orbit_distance + step, 3.0f, 12.0f);
+  orbit_distance = glm::clamp(orbit_distance + step, -12.0f, 12.0f);
   position.x = orbit_distance * std::cos(orbit_angle);
   position.z = orbit_distance * std::sin(orbit_angle);
 }

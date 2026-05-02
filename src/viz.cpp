@@ -159,10 +159,8 @@ void Visualizer::render_scene() {
   main_shader.set<bool>("use_texture", true);
   globe.render(globe_instances);
 
-  glDisable(GL_DEPTH_TEST); // For drawing the 2D shapes
   main_shader.set<bool>("use_texture", false);
   circles.render(circle_instances);
-  glEnable(GL_DEPTH_TEST);
 
   // Render the skybox
   cubemap_shader.use();

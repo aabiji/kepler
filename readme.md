@@ -4,13 +4,9 @@ Inspirations:
 - https://orbital-watch-pink.vercel.app/
 - https://www.jack-huston.com/TLE-Satellite-Plotter/
 
-- Write comments explaining everything
 - Add basic phong lighting on the gloe
-  - Use the normal map and the specular map textures
+  - Use the normal map and the specular map textures (use a normal matrix)
 - Propagate satellites on a seperate thread
-- Improve circle rendering
-  - Don't render occluded circles
-  - Render the sphere in such a way that there are always fully circular no matter the rotation
 - Decide whether to use the daymap or the nightmap based off of the simulated time (current user time?)
   Get starting position, then always propagate one timestamp into the future. Then just interpolate the position during the timestamp
 - Click on a satellite to show info on it

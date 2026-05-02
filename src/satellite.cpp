@@ -114,6 +114,8 @@ void Constellation::propagate(double step_seconds, double earth_scale,
     position = teme_to_itrs(position, date);
     // Scale kilometers to on screen coordinates by dividing by the Earth's radius
     position *= earth_scale / 6371.0;
+    // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
+    position = glm::vec3(position.x, position.z, position.y);
 
     // Since the position is in the ITRS reference frame, and Earth is centered
     // at the origin, positions can directly be mapped to on screen positions
@@ -122,6 +124,7 @@ void Constellation::propagate(double step_seconds, double earth_scale,
 
     instances[i].model_matrix = translate * scale;
     instances[i].color = glm::vec4(0.0, 1.0, 0.0, 1.0);
+    instances[i].is_2d = true;
   }
 }
 

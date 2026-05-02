@@ -11,17 +11,19 @@ struct Skybox {
   unsigned int vao, vbo;
 };
 
-struct Vertex {
+struct alignas(16) Vertex {
   glm::vec3 position;
   glm::vec2 uv;
   glm::vec3 normal;
 };
 
 // NOTE: See vertex.glsl
-struct InstanceData {
+struct alignas(16) InstanceData {
   glm::mat4 model_matrix;
   glm::vec4 color;
-  InstanceData(glm::mat4 m, glm::vec4 c) : model_matrix(m), color(c) {}
+  int is_2d;
+  InstanceData(glm::mat4 m, glm::vec4 c)
+      : model_matrix(m), color(c), is_2d(false) {}
   InstanceData() {}
 };
 
