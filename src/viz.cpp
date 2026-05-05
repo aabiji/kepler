@@ -118,7 +118,7 @@ void Visualizer::init_scene_objects() {
   sun_pos = glm::vec3((1.0 / 6371.0) * 149600000.0, 0.0, 0.0);
 
   globe_instances.push_back(
-      InstanceData(glm::vec4(0.0), glm::vec3(earth_scale)));
+      InstanceData(glm::vec3(0.0), glm::vec3(earth_scale)));
 
   simulation_thread =
       std::jthread(simulate_satellites, "../assets/starlink.csv",

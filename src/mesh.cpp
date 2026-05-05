@@ -128,10 +128,12 @@ InstancedMesh::InstancedMesh(std::vector<Vertex> vertices,
 }
 
 InstancedMesh::~InstancedMesh() {
-  glDeleteVertexArrays(1, &vao);
-  glDeleteBuffers(1, &vbo);
-  glDeleteBuffers(1, &ebo);
-  glDeleteBuffers(1, &ssbo);
+  if (initialized) {
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &ssbo);
+  }
 }
 
 void InstancedMesh::render(std::vector<InstanceData> &data) {

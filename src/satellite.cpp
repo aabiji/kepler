@@ -46,6 +46,7 @@ double epoch_day_of_year(std::string timestamp) {
   int hour = std::stoi(timestamp.substr(11, 2));
   int minute = std::stoi(timestamp.substr(14, 2));
   int second = std::stoi(timestamp.substr(17, 2));
+  // TODO: don't assume this has fractional seconds
   double fractional_second = std::stod("0." + timestamp.substr(20));
 
   // Accumulate days

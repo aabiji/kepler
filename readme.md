@@ -4,23 +4,34 @@ Inspirations:
 - https://orbital-watch-pink.vercel.app/
 - https://www.jack-huston.com/TLE-Satellite-Plotter/
 
-https://en.wikipedia.org/wiki/Halo_(optical_phenomenon)
+TODO:
 
-- Interpolate propagated satellite positions
-- The earth should be tilted on its axis
-- Initially rotate the earth so that it's rotation matches the actual earth's rotation
-- Don't allow zooming through the planet
-- Render a small halo around the earth
-- Render clouds on the globe
-- Decide whether to use the daymap or the nightmap based off of the simulated time (current user time?)
-- Click on a satellite to show info on it
-- Trace satellite trajectories using a curved line
-- Basic UI using imgui:
-  - List of all the satellites (name, type, description)
-  - Filter satellites by type, by producer, etc
-- Issue HTTP requests to pull in new satellite csvs every few hours (maybe during app load to get fresh data?)
-- Zoom in on your GPS position and highlight the swarm of satellites that are overhead
-- Port to WASM, release project
+- [ ] Interpolate propagated satellite positions
+
+- [ ] Zoom the visualization out to view satellites at further distance orbits
+    - Scale the visualization to render all the Celestrak satellites
+
+- [ ] Color the circles based off of the satellite type:
+  (payload, rocket body, debris, unknown)
+
+- [ ] Trace satellite trajectories using curve line around the globe
+
+- [ ] Show satellite info in basic ImGUI UI when clicking on a circle:
+  (name, catalogue number, norad id, type, inclination, perigee,
+  apogee, velocity, lattitude, longittude, eccentricity, mean motion, epoch)
+    - [ ] Highlight the satellite circle when clicked
+
+    - [ ] List the number of each type of satellites next to a checkbox that can be used to toggle their filtering
+
+    - [ ] Search for a specific satellite by name and move camera towards it if found
+
+- [ ] Write a shell script to pull the latest Celestrack csv satellite data
+
+- [ ] Reduce the app's startup time
+
+- [ ] Continue to drag the camera after the mouse is released
+
+- [ ] Port to WASM, release project, finish the project by **May 13**
 
 ---
 

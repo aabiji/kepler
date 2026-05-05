@@ -34,7 +34,7 @@ void Texture::init(std::vector<std::string> paths) {
   for (size_t i = 0; i < paths.size(); i++) {
     int width = 0, height = 0, channels = 0;
     unsigned char *pixels =
-        stbi_load(paths[i].c_str(), &width, &height, &channels, 3);
+        stbi_load(paths[i].c_str(), &width, &height, &channels, 0);
     if (pixels == nullptr)
       THROW_ERROR("Failed to load {}", paths[i]);
 
