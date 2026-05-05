@@ -1,10 +1,10 @@
 #pragma once
 
-#include "satellite.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <set>
+#include <thread>
 
 #include "camera.h"
 #include "mesh.h"
@@ -32,6 +32,7 @@ struct InputState {
 
 class Visualizer {
 public:
+  ~Visualizer();
   Visualizer(int width, int height);
   void run();
 
@@ -44,11 +45,12 @@ private:
   GLFWwindow *window;
   InputState state;
 
-  std::vector<InstanceData> globe_instances;
-  std::vector<InstanceData> circle_instances;
+  glm::vec3 sun_pos;
   double earth_scale;
   double constellation_time_step;
-  glm::vec3 sun_pos;
+  std::vector<InstanceData> globe_instances;
+  std::vector<InstanceData> circle_instances;
+  std::jthread simulation_thread;
 
   Camera camera;
   Shader main_shader;
@@ -60,5 +62,4 @@ private:
   Texture earth_specular_map;
   InstancedMesh globe;
   InstancedMesh circles;
-  Constellation constellation;
 };

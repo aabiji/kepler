@@ -4,6 +4,7 @@
 
 #include "debug.h"
 #include "mesh.h"
+#include "satellite.h"
 #include "viz.h"
 
 // This is done so that GLFW can be terminated after
@@ -16,6 +17,8 @@ Visualizer::Visualizer(int width, int height) {
   set_callbacks();
   init_scene_objects();
 }
+
+Visualizer::~Visualizer() { simulation_thread.request_stop(); }
 
 void Visualizer::create_window(int width, int height) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -117,10 +120,9 @@ void Visualizer::init_scene_objects() {
   globe_instances.push_back(
       InstanceData(glm::vec4(0.0), glm::vec3(earth_scale)));
 
-  int size = constellation.load_satellite_data("../assets/starlink.csv");
-  circle_instances.resize(size);
-  constellation.set_current_time();
-  constellation.propagate(0, earth_scale, circle_instances);
+  simulation_thread =
+      std::jthread(simulate_satellites, "../assets/starlink.csv",
+                   std::ref(circle_instances));
 }
 
 void Visualizer::run() {

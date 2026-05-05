@@ -1,25 +1,8 @@
 #pragma once
 
-#include <perturb/perturb.hpp>
-#include <string>
-#include <vector>
+#include <stop_token>
 
 #include "mesh.h"
 
-struct Satellite {
-  std::string name;
-  std::string id;
-  perturb::Satellite model;
-};
-
-class Constellation {
-public:
-  void set_current_time();
-  int load_satellite_data(std::string csv_path);
-  void propagate(double step_seconds, double earth_scale,
-                 std::vector<InstanceData> &instances);
-
-private:
-  perturb::JulianDate date;
-  std::vector<Satellite> satellites;
-};
+void simulate_satellites(std::stop_token token, const char *input_csv_path,
+                         std::vector<InstanceData> &data);

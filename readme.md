@@ -4,11 +4,15 @@ Inspirations:
 - https://orbital-watch-pink.vercel.app/
 - https://www.jack-huston.com/TLE-Satellite-Plotter/
 
-- The earth should be tilted and should rotate over time
+https://en.wikipedia.org/wiki/Halo_(optical_phenomenon)
+
+- Interpolate propagated satellite positions
+- The earth should be tilted on its axis
+- Initially rotate the earth so that it's rotation matches the actual earth's rotation
+- Don't allow zooming through the planet
+- Render a small halo around the earth
 - Render clouds on the globe
-- Propagate satellites on a seperate thread
 - Decide whether to use the daymap or the nightmap based off of the simulated time (current user time?)
-  Get starting position, then always propagate one timestamp into the future. Then just interpolate the position during the timestamp
 - Click on a satellite to show info on it
 - Trace satellite trajectories using a curved line
 - Basic UI using imgui:
@@ -17,6 +21,16 @@ Inspirations:
 - Issue HTTP requests to pull in new satellite csvs every few hours (maybe during app load to get fresh data?)
 - Zoom in on your GPS position and highlight the swarm of satellites that are overhead
 - Port to WASM, release project
+
+---
+
+```bash
+# Install tools to speed up compilation
+sudo apt install mold ccache
+
+# Development build setup
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_LINKER_TYPE=MOLD
+```
 
 ---
 

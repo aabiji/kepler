@@ -1,16 +1,19 @@
 #include <chrono>
 #include <cstring>
-#include <ctime>
 #include <fstream>
 #include <glm/glm.hpp>
 #include <perturb/perturb.hpp>
 #include <perturb/tle.hpp>
+#include <stop_token>
+#include <thread>
+#include <utility>
+#include <vector>
 
 #include "debug.h"
 #include "mesh.h"
-#include "satellite.h"
 
 const double DAY_SECONDS = 86400.0;
+using sysclock = std::chrono::system_clock;
 
 void handle_error(perturb::Sgp4Error err) {
   std::string msg = "";
@@ -90,40 +93,32 @@ glm::vec3 teme_to_itrs(glm::vec3 position, perturb::JulianDate date) {
   return rotation * position;
 }
 
+struct Satellite {
+  std::string name;
+  std::string id;
+  perturb::Satellite model;
+};
+
+class Constellation {
+public:
+  void set_current_time();
+  int load_satellite_data(std::string csv_path);
+  void propagate(double step_seconds, double earth_scale,
+                 std::vector<InstanceData> &instances);
+
+private:
+  perturb::JulianDate date;
+  std::vector<Satellite> satellites;
+};
+
 void Constellation::set_current_time() {
   // Set the current julian date
-  auto now = std::chrono::system_clock::now();
-  auto tt = std::chrono::system_clock::to_time_t(now);
+  auto tt = sysclock::to_time_t(sysclock::now());
   auto utc_time = *gmtime(&tt);
   auto time = perturb::DateTime{
       utc_time.tm_year + 1900, utc_time.tm_mon + 1, utc_time.tm_mday,
       utc_time.tm_hour,        utc_time.tm_min,     (double)utc_time.tm_sec};
   date = perturb::JulianDate(time);
-}
-
-void Constellation::propagate(double step_seconds, double earth_scale,
-                              std::vector<InstanceData> &instances) {
-  if (instances.size() != satellites.size())
-    THROW_ERROR("Output buffer size mismatch");
-
-  date += (step_seconds / DAY_SECONDS);
-  for (size_t i = 0; i < satellites.size(); i++) {
-    perturb::StateVector s;
-    handle_error(satellites[i].model.propagate(date, s));
-
-    glm::vec3 position = glm::vec3(s.position[0], s.position[1], s.position[2]);
-    position = teme_to_itrs(position, date);
-    // Scale kilometers to on screen coordinates by dividing by the Earth's radius
-    position *= earth_scale / 6371.0;
-    // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
-    position = glm::vec3(position.x, position.z, position.y);
-
-    // Since the position is in the ITRS reference frame, and Earth is centered
-    // at the origin, positions can directly be mapped to on screen positions
-    instances[i] = InstanceData(position, glm::vec3(0.01, 0.01, 0.01));
-    instances[i].color = glm::vec4(0.0, 1.0, 0.0, 1.0);
-    instances[i].is_2d = true;
-  }
 }
 
 int Constellation::load_satellite_data(std::string csv_path) {
@@ -195,4 +190,58 @@ int Constellation::load_satellite_data(std::string csv_path) {
 
   file.close();
   return satellites.size();
+}
+
+void Constellation::propagate(double step_seconds, double earth_scale,
+                              std::vector<InstanceData> &instances) {
+  if (instances.size() != satellites.size())
+    instances.resize(satellites.size());
+
+  date += (step_seconds / DAY_SECONDS);
+  for (size_t i = 0; i < satellites.size(); i++) {
+    perturb::StateVector s;
+    handle_error(satellites[i].model.propagate(date, s));
+
+    glm::vec3 position = glm::vec3(s.position[0], s.position[1], s.position[2]);
+    position = teme_to_itrs(position, date);
+    // Scale kilometers to on screen coordinates by dividing by the Earth's radius
+    position *= earth_scale / 6371.0;
+    // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
+    position = glm::vec3(position.x, position.z, position.y);
+
+    // Since the position is in the ITRS reference frame, and Earth is centered
+    // at the origin, positions can directly be mapped to on screen positions
+    instances[i] = InstanceData(position, glm::vec3(0.01, 0.01, 0.01));
+    instances[i].color = glm::vec4(0.0, 1.0, 0.0, 1.0);
+    instances[i].is_2d = true;
+  }
+}
+
+void simulate_satellites(std::stop_token token, const char *input_csv_path,
+                         std::vector<InstanceData> &data) {
+  Constellation c;
+  std::vector<InstanceData> back_buffer;
+
+  // Initialize
+  c.load_satellite_data(input_csv_path);
+  c.set_current_time();
+
+  // Compute initial positions
+  c.propagate(0, 2.0, back_buffer);
+  std::swap(data, back_buffer);
+
+  // Propagate every 1 second
+  std::time_t tt = sysclock::to_time_t(sysclock::now());
+  struct std::tm *target_time = std::localtime(&tt);
+  target_time->tm_sec++;
+
+  while (!token.stop_requested()) {
+    c.propagate(1, 2.0, back_buffer);
+    std::swap(data, back_buffer);
+
+    // Sleep until the next second
+    std::time_t normalized = std::mktime(target_time);
+    std::this_thread::sleep_until(sysclock::from_time_t(normalized));
+    target_time->tm_sec++;
+  }
 }

@@ -4,13 +4,6 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/matrix_interpolation.hpp>
 
-struct Skybox {
-  ~Skybox();
-  void init();
-  void render();
-  unsigned int vao, vbo;
-};
-
 struct alignas(16) Vertex {
   glm::vec3 position;
   glm::vec2 uv;
@@ -26,6 +19,13 @@ struct alignas(16) InstanceData {
   int is_2d;
   InstanceData(glm::vec3 position, glm::vec3 scale);
   InstanceData() {}
+};
+
+struct Skybox {
+  ~Skybox();
+  void init();
+  void render();
+  unsigned int vao, vbo;
 };
 
 class InstancedMesh {
