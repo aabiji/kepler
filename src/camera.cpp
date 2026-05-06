@@ -6,11 +6,11 @@
 
 Camera::Camera() {
   // Nice, predetermined starting perspective
+  position = glm::vec3(-1.91227, 0.4, -2.31154);
   yaw = -0.0194961;
   pitch = -0.00847298;
-  orbit_angle = 4.08407;
-  position = glm::vec3(-4.11448, 0.4, -5.66313);
-  orbit_distance = 7.0;
+  orbit_angle = 4.02124;
+  orbit_distance = 3.0;
 }
 
 void Camera::rotate_orientation(glm::vec2 delta, float sensitivity) {
@@ -21,7 +21,7 @@ void Camera::rotate_orientation(glm::vec2 delta, float sensitivity) {
 
 void Camera::rotate_position(bool left) {
   float steps = 100;
-  orbit_angle += (M_PI * 2.0 * (left ? -1 : 1)) / steps;
+  orbit_angle += (std::numbers::pi * 2.0 * (left ? -1 : 1)) / steps;
   if (orbit_angle > 2.0 * M_PI)
     orbit_angle -= 2 * M_PI;
   if (orbit_angle < 0)
@@ -31,8 +31,8 @@ void Camera::rotate_position(bool left) {
 }
 
 void Camera::zoom(bool inwards) {
-  float step = inwards ? -0.5 : 0.5;
-  orbit_distance = glm::clamp(orbit_distance + step, 3.0f, 20.0f);
+  float step = inwards ? -0.25 : 0.25;
+  orbit_distance = glm::clamp(orbit_distance + step, 1.5f, 3.0f);
   position.x = orbit_distance * std::cos(orbit_angle);
   position.z = orbit_distance * std::sin(orbit_angle);
 }

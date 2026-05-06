@@ -1,19 +1,26 @@
 #include <chrono>
-#include <cstring>
+#include <ctime>
 #include <fstream>
 #include <glm/glm.hpp>
 #include <perturb/perturb.hpp>
 #include <perturb/tle.hpp>
 #include <stop_token>
-#include <thread>
 #include <utility>
 #include <vector>
 
 #include "debug.h"
 #include "mesh.h"
+#include "satellite.h"
 
 const double DAY_SECONDS = 86400.0;
 using sysclock = std::chrono::system_clock;
+
+struct Satellite {
+  std::string name;
+  std::string id;
+  double mean_motion;
+  perturb::Satellite model;
+};
 
 void handle_error(perturb::Sgp4Error err) {
   std::string msg = "";
@@ -64,72 +71,14 @@ double epoch_day_of_year(std::string timestamp) {
   return day_of_year + elapsed_seconds / DAY_SECONDS;
 }
 
-// Calculate the Greenwich Mean Sidereal Time, which is the angle between
-// vernal equinox and the Earth's prime meridean, in radians.
-double gmst_time(perturb::JulianDate date) {
-  double full_date = date.jd + date.jd_frac;
-
-  // Julian centuries since the J2000 epoch
-  double jc = (full_date - 2451545.0) / 36525.0;
-
-  // Calculate GMST in seconds using the IAU 1982 polynomial formula
-  double seconds = 67310.54841 + (876600.0 * 3600.0 + 8640184.812866) * jc +
-                   0.093104 * jc * jc - 6.2e-6 * jc * jc * jc;
-
-  // Convert to radians [0, 2π]
-  double radians = (seconds * 2.0 * M_PI) / DAY_SECONDS;
-  double normalized = std::fmod(radians, (2.0 * M_PI));
-  return normalized < 0.0 ? normalized + 2.0 * M_PI : normalized;
-}
-
-// Convert a position in the TEME reference from to the ITRS reference frame
-// since positions in the TEME reference frame are tied to Earth's orientation
-// in space at a specific time and do not rotate with the Earth.
-glm::vec3 teme_to_itrs(glm::vec3 position, perturb::JulianDate date) {
-  double angle = gmst_time(date);
-  // Rotates vectors in the XY plane about the Z axis
-  double sin_a = std::sin(angle), cos_a = std::cos(angle);
-  glm::mat3 rotation =
-      glm::mat3(cos_a, -sin_a, 0.0, sin_a, cos_a, 0.0, 0.0, 0.0, 1.0);
-  return rotation * position;
-}
-
-struct Satellite {
-  std::string name;
-  std::string id;
-  perturb::Satellite model;
-};
-
-class Constellation {
-public:
-  void set_current_time();
-  int load_satellite_data(std::string csv_path);
-  void propagate(double step_seconds, double earth_scale,
-                 std::vector<InstanceData> &instances);
-
-private:
-  perturb::JulianDate date;
-  std::vector<Satellite> satellites;
-};
-
-void Constellation::set_current_time() {
-  // Set the current julian date
-  auto tt = sysclock::to_time_t(sysclock::now());
-  auto utc_time = *gmtime(&tt);
-  auto time = perturb::DateTime{
-      utc_time.tm_year + 1900, utc_time.tm_mon + 1, utc_time.tm_mday,
-      utc_time.tm_hour,        utc_time.tm_min,     (double)utc_time.tm_sec};
-  date = perturb::JulianDate(time);
-}
-
-int Constellation::load_satellite_data(std::string csv_path) {
-  std::ifstream file(csv_path.c_str());
+std::vector<Satellite> load_satellite_data(const char *csv_path) {
+  std::ifstream file(csv_path);
   if (!file.good() || !file.is_open())
     THROW_ERROR("Failed to open {}", csv_path);
 
   bool column_line = true;
   std::string line = "";
-  satellites.clear();
+  std::vector<Satellite> satellites;
 
   while (std::getline(file, line)) {
     if (column_line) {
@@ -169,7 +118,6 @@ int Constellation::load_satellite_data(std::string csv_path) {
         case 9: info.ephemeris_type = std::stol(str); break;
         case 10: info.classification = str[0]; break;
         case 11: {
-          std::memset(info.catalog_number, ' ', 6);
           for (size_t i = 0; i < str.length(); i++) {
             info.catalog_number[i] = str[i];
           }
@@ -186,63 +134,108 @@ int Constellation::load_satellite_data(std::string csv_path) {
 
     auto model = perturb::Satellite(info);
     handle_error(model.last_error());
-    satellites.push_back({name, id, model});
+    satellites.push_back({name, id, info.mean_motion, model});
   }
 
   file.close();
-  return satellites.size();
+  return satellites;
 }
 
-void Constellation::propagate(double step_seconds, double earth_scale,
-                              std::vector<InstanceData> &instances) {
-  if (instances.size() != satellites.size())
-    instances.resize(satellites.size());
+perturb::JulianDate get_current_time() {
+  auto tt = sysclock::to_time_t(sysclock::now());
+  struct std::tm utc_time;
+  gmtime_r(&tt, &utc_time);
+  auto time = perturb::DateTime{
+      utc_time.tm_year + 1900, utc_time.tm_mon + 1, utc_time.tm_mday,
+      utc_time.tm_hour,        utc_time.tm_min,     (double)utc_time.tm_sec};
+  return perturb::JulianDate(time);
+}
 
-  date += (step_seconds / DAY_SECONDS);
-  for (size_t i = 0; i < satellites.size(); i++) {
-    perturb::StateVector s;
-    handle_error(satellites[i].model.propagate(date, s));
+// Calculate the Greenwich Mean Sidereal Time, which is the angle between
+// vernal equinox and the Earth's prime meridean, in radians.
+double gmst_time(perturb::JulianDate date) {
+  double full_date = date.jd + date.jd_frac;
 
-    glm::vec3 position = glm::vec3(s.position[0], s.position[1], s.position[2]);
-    position = teme_to_itrs(position, date);
-    // Scale kilometers to on screen coordinates by dividing by the Earth's radius
-    position *= earth_scale / 6371.0;
-    // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
-    position = glm::vec3(position.x, position.z, position.y);
+  // Julian centuries since the J2000 epoch
+  double jc = (full_date - 2451545.0) / 36525.0;
 
-    // Since the position is in the ITRS reference frame, and Earth is centered
-    // at the origin, positions can directly be mapped to on screen positions
-    instances[i] = InstanceData(position, glm::vec3(0.01, 0.01, 0.01));
-    instances[i].color = glm::vec4(0.0, 1.0, 0.0, 1.0);
-    instances[i].is_2d = true;
+  // Calculate GMST in seconds using the IAU 1982 polynomial formula
+  double seconds = 67310.54841 + (876600.0 * 3600.0 + 8640184.812866) * jc +
+                   0.093104 * jc * jc - 6.2e-6 * jc * jc * jc;
+
+  // Convert to radians [0, 2π]
+  double pi = std::numbers::pi;
+  double radians = (seconds * 2.0 * pi) / DAY_SECONDS;
+  double normalized = std::fmod(radians, (2.0 * pi));
+  return normalized < 0.0 ? normalized + 2.0 * pi : normalized;
+}
+
+glm::vec3 propagate(perturb::Satellite &satellite, perturb::JulianDate time) {
+  perturb::StateVector s;
+  handle_error(satellite.propagate(time, s));
+  glm::vec3 teme_position =
+      glm::vec3(s.position[0], s.position[1], s.position[2]);
+
+  // Convert the position in the TEME reference frame to the ITRS reference frame
+  double angle = gmst_time(time);
+  double sin_a = std::sin(angle), cos_a = std::cos(angle);
+  // Rotates vectors in the XY plane about the Z axis
+  glm::mat3 rotation =
+      glm::mat3(cos_a, -sin_a, 0.0, sin_a, cos_a, 0.0, 0.0, 0.0, 1.0);
+  glm::vec3 itrs_position = rotation * teme_position;
+
+  // Scale kilometers to on screen coordinates by dividing by the Earth's radius
+  itrs_position *= 1.0 / 6371.0;
+
+  // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
+  return glm::vec3(itrs_position.x, itrs_position.z, itrs_position.y);
+}
+
+// Predict the full trajectory of a satellite given an initial configuration
+std::vector<glm::vec3> compute_trajectory(Satellite satellite) {
+  double period = DAY_SECONDS / satellite.mean_motion;
+  perturb::JulianDate time = get_current_time();
+  double step = 30;
+
+  std::vector<glm::vec3> trajectory;
+  for (double seconds = 0; seconds < period; seconds += step) {
+    trajectory.push_back(propagate(satellite.model, time));
+    time += step / DAY_SECONDS;
   }
+  return trajectory;
 }
 
 void simulate_satellites(std::stop_token token, const char *input_csv_path,
-                         std::vector<InstanceData> &data) {
-  Constellation c;
-  std::vector<InstanceData> back_buffer;
+                         SharedInstances &shared) {
+  std::vector<Satellite> satellites = load_satellite_data(input_csv_path);
+  perturb::JulianDate simulation_time = get_current_time();
 
-  // Initialize
-  c.load_satellite_data(input_csv_path);
-  c.set_current_time();
-
-  // Compute initial positions
-  c.propagate(0, 2.0, back_buffer);
-  std::swap(data, back_buffer);
-
-  // Propagate every 1 second
   std::time_t tt = sysclock::to_time_t(sysclock::now());
-  struct std::tm *target_time = std::localtime(&tt);
-  target_time->tm_sec++;
+  struct std::tm target_time;
+  localtime_r(&tt, &target_time);
+  target_time.tm_sec++;
 
+  auto step = [&]() {
+    std::vector<InstanceData> temp(satellites.size());
+    for (size_t i = 0; i < satellites.size(); i++) {
+      glm::vec3 position = propagate(satellites[i].model, simulation_time);
+      temp[i] = InstanceData(position, glm::vec3(0.01, 0.01, 0.01));
+      temp[i].color = glm::vec4(0.0, 1.0, 0.0, 1.0);
+      temp[i].is_2d = true;
+    }
+
+    std::lock_guard<std::mutex> guard(shared.mutex);
+    std::swap(temp, shared.data);
+  };
+
+  step(); // Get initial positions
   while (!token.stop_requested()) {
-    c.propagate(1, 2.0, back_buffer);
-    std::swap(data, back_buffer);
+    simulation_time += 1.0 / DAY_SECONDS;
+    step();
 
     // Sleep until the next second
-    std::time_t normalized = std::mktime(target_time);
+    std::time_t normalized = std::mktime(&target_time);
     std::this_thread::sleep_until(sysclock::from_time_t(normalized));
-    target_time->tm_sec++;
+    target_time.tm_sec++;
   }
 }

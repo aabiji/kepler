@@ -3,6 +3,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/matrix_interpolation.hpp>
+#include <mutex>
+#include <vector>
 
 struct alignas(16) Vertex {
   glm::vec3 position;
@@ -19,6 +21,11 @@ struct alignas(16) InstanceData {
   int is_2d;
   InstanceData(glm::vec3 position, glm::vec3 scale);
   InstanceData() {}
+};
+
+struct SharedInstances {
+  std::vector<InstanceData> data;
+  std::mutex mutex;
 };
 
 struct Skybox {

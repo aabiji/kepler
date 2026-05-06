@@ -46,11 +46,11 @@ private:
   InputState state;
 
   glm::vec3 sun_pos;
-  double earth_scale;
   double constellation_time_step;
-  std::vector<InstanceData> globe_instances;
-  std::vector<InstanceData> circle_instances;
+
   std::jthread simulation_thread;
+  SharedInstances circle_instances;
+  std::vector<InstanceData> globe_instances;
 
   Camera camera;
   Shader main_shader;

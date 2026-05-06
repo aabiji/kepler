@@ -5,4 +5,4 @@
 #include "mesh.h"
 
 void simulate_satellites(std::stop_token token, const char *input_csv_path,
-                         std::vector<InstanceData> &data);
+                         SharedInstances &shared);

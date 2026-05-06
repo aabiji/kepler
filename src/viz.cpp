@@ -18,7 +18,10 @@ Visualizer::Visualizer(int width, int height) {
   init_scene_objects();
 }
 
-Visualizer::~Visualizer() { simulation_thread.request_stop(); }
+Visualizer::~Visualizer() {
+  simulation_thread.request_stop();
+  simulation_thread.join();
+}
 
 void Visualizer::create_window(int width, int height) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -34,8 +37,9 @@ void Visualizer::create_window(int width, int height) {
   if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) == 0)
     THROW_ERROR("Failed to load the OpenGL context");
 
-  state.projection = glm::perspective(
-      (float)M_PI / 4.0f, (float)width / (float)height, 0.1f, 100.0f);
+  state.projection =
+      glm::perspective((float)std::numbers::pi / 4.0f,
+                       (float)width / (float)height, 0.1f, 100.0f);
   glEnable(GL_DEPTH_TEST);
 }
 
@@ -73,8 +77,8 @@ void Visualizer::set_callbacks() {
   glfwSetWindowSizeCallback(window, [](GLFWwindow *window, int w, int h) {
     InputState *state =
         static_cast<InputState *>(glfwGetWindowUserPointer(window));
-    state->projection =
-        glm::perspective((float)M_PI / 4.0f, (float)w / (float)h, 0.1f, 100.0f);
+    state->projection = glm::perspective((float)std::numbers::pi / 4.0f,
+                                         (float)w / (float)h, 0.1f, 100.0f);
     glViewport(0, 0, w, h);
   });
 
@@ -113,12 +117,9 @@ void Visualizer::init_scene_objects() {
   globe = create_unit_sphere(32, 32);
   skybox.init();
 
-  earth_scale = 2.0;
   constellation_time_step = 1; // Propagate every 1 second
   sun_pos = glm::vec3((1.0 / 6371.0) * 149600000.0, 0.0, 0.0);
-
-  globe_instances.push_back(
-      InstanceData(glm::vec3(0.0), glm::vec3(earth_scale)));
+  globe_instances.push_back(InstanceData(glm::vec3(0.0), glm::vec3(1.0)));
 
   simulation_thread =
       std::jthread(simulate_satellites, "../assets/starlink.csv",
@@ -172,7 +173,10 @@ void Visualizer::render_scene() {
   globe.render(globe_instances);
 
   main_shader.set<bool>("use_texture", false);
-  circles.render(circle_instances);
+  {
+    std::lock_guard<std::mutex> guard(circle_instances.mutex);
+    circles.render(circle_instances.data);
+  }
 
   // Render the skybox
   cubemap_shader.use();

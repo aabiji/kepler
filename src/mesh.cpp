@@ -3,6 +3,8 @@
 
 #include "mesh.h"
 
+const float pi = std::numbers::pi;
+
 Skybox::~Skybox() {
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
@@ -205,12 +207,12 @@ InstancedMesh create_unit_sphere(int longitudes, int lattitudes) {
   // Add vertices
   for (int i = 0; i <= lattitudes; i++) {
     float lattitude_angle =
-        (M_PI / 2.0) - i * (M_PI / (float)lattitudes); // -pi/2 to pi/2
+        (pi / 2.0) - i * (pi / (float)lattitudes); // -pi/2 to pi/2
     float xy = cos(lattitude_angle);
     float z = sin(lattitude_angle);
 
     for (int j = 0; j <= longitudes; j++) {
-      float longitude_angle = j * (2.0 * M_PI / (float)longitudes);
+      float longitude_angle = j * (2.0 * pi / (float)longitudes);
 
       Vertex v;
       v.position =
@@ -256,7 +258,7 @@ InstancedMesh create_circle_mesh(int num_fans) {
 
   for (int i = 0; i < num_fans; i++) {
     Vertex v;
-    float angle = i * ((2.0 * M_PI) / (float)num_fans);
+    float angle = i * ((2.0 * pi) / (float)num_fans);
     v.position = glm::vec3(std::cos(angle), std::sin(angle), 0);
     vertices.push_back(v);
   }
