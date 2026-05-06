@@ -1,5 +1,5 @@
-#include <glad/glad.h>
 #define STB_IMAGE_IMPLEMENTATION
+#include <glad/glad.h>
 #include <stb_image.h>
 
 #include "debug.h"
@@ -53,4 +53,47 @@ void Texture::init(std::vector<std::string> paths) {
   glTexParameteri(obj, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(obj, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glGenerateMipmap(obj);
+}
+
+Framebuffer::~Framebuffer() {
+  glDeleteFramebuffers(1, &fbo);
+  glDeleteTextures(1, &texture);
+}
+
+void Framebuffer::bind(bool use) {
+  glBindFramebuffer(GL_FRAMEBUFFER, use ? fbo : 0);
+}
+
+unsigned int Framebuffer::read_value(int x, int y) {
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+  unsigned int value;
+  glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &value);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+  return value;
+}
+
+void Framebuffer::resize(int width, int height) {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER,
+               GL_UNSIGNED_INT, nullptr);
+  glViewport(0, 0, width, height);
+}
+
+void Framebuffer::init(int width, int height) {
+  glGenFramebuffers(1, &fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+  glGenTextures(1, &texture);
+  resize(width, height);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
+                         texture, 0);
+
+  GLenum attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+  glDrawBuffers(2, attachments);
+
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    THROW_ERROR("Incomplete frame buffer");
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

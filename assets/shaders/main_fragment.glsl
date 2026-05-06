@@ -4,18 +4,24 @@ in vec2 texture_coords;
 in vec4 obj_color;
 in vec3 obj_pos;
 in mat3 tbn_matrix;
+flat in uint instance_index;
 
 uniform vec3 sun_pos;
 uniform vec3 view_pos; // In world space
 uniform bool use_texture;
+uniform uint selected_index;
 
 uniform sampler2D planet_texture;
 uniform sampler2D planet_normal_map;
 uniform sampler2D planet_specular_map;
 
-out vec4 fragment_color;
+layout(location = 0) out vec4 fragment_color;
+layout(location = 1) out uint output_value;
 
-void main() {
+vec4 phong_lighting() {
+    bool selected = selected_index == instance_index;
+    // TODO: draw an outline if selected
+
     vec4 pixel = use_texture ? texture(planet_texture, texture_coords) : obj_color;
 
     vec3 normal_value = texture(planet_normal_map, texture_coords).rgb;
@@ -41,5 +47,10 @@ void main() {
     vec4 diffuse = diffuse_strength * light_color;
     vec4 ambient = ambient_strength * light_color;
     vec4 specular = intensity * spec * light_color;
-    fragment_color = (ambient + diffuse + specular) * pixel;
+    return (ambient + diffuse + specular) * pixel;
+}
+
+void main() {
+    fragment_color = phong_lighting();
+    output_value = instance_index;
 }

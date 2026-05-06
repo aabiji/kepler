@@ -230,7 +230,7 @@ void simulate_satellites(std::stop_token token, const char *input_csv_path,
 
   step(); // Get initial positions
   while (!token.stop_requested()) {
-    simulation_time += 1.0 / DAY_SECONDS;
+    simulation_time += (1.0 / DAY_SECONDS);
     step();
 
     // Sleep until the next second

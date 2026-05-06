@@ -41,6 +41,7 @@ void Visualizer::create_window(int width, int height) {
       glm::perspective((float)std::numbers::pi / 4.0f,
                        (float)width / (float)height, 0.1f, 100.0f);
   glEnable(GL_DEPTH_TEST);
+  index_buffer.init(width, height);
 }
 
 void Visualizer::set_callbacks() {
@@ -80,6 +81,7 @@ void Visualizer::set_callbacks() {
     state->projection = glm::perspective((float)std::numbers::pi / 4.0f,
                                          (float)w / (float)h, 0.1f, 100.0f);
     glViewport(0, 0, w, h);
+    // TODO: resize the frame buffer
   });
 
   glfwSetCursorPosCallback(window, [](GLFWwindow *window, double x, double y) {
@@ -126,6 +128,7 @@ void Visualizer::init_scene_objects() {
                    std::ref(circle_instances));
 }
 
+#include <iostream>
 void Visualizer::run() {
   double x, y;
   glfwGetCursorPos(window, &x, &y);
@@ -140,8 +143,12 @@ void Visualizer::run() {
     if (state.keys.contains(GLFW_KEY_S)) camera.move_vertically(false);
     if (state.keys.contains(GLFW_KEY_A)) camera.rotate_position(false);
     if (state.keys.contains(GLFW_KEY_D)) camera.rotate_position(true);
-    if (state.mouse_pressed) camera.rotate_orientation(state.cursor_delta, 0.001);
     if (state.yscroll != 0) camera.zoom(state.yscroll < 0);
+    if (state.mouse_pressed) {
+      camera.rotate_orientation(state.cursor_delta, 0.001);
+      unsigned int id = index_buffer.read_value(state.prev_cursor.x, state.prev_cursor.y);
+      std::cout << "Satellite id: " << id << "\n";
+    }
     // clang-format on
 
     state.yscroll = 0;
@@ -162,19 +169,32 @@ void Visualizer::render_scene() {
   main_shader.set<glm::mat4>("projection", state.projection);
   main_shader.set<glm::vec3>("view_pos", camera.get_position());
   main_shader.set<glm::vec3>("sun_pos", sun_pos);
-  main_shader.set<int>("planet_texture", 0);
-  main_shader.set<int>("planet_normal_map", 1);
-  main_shader.set<int>("planet_specular_map", 2);
-  main_shader.set<bool>("use_texture", true);
+  main_shader.set<unsigned int>("planet_texture", 0);
+  main_shader.set<unsigned int>("planet_normal_map", 1);
+  main_shader.set<unsigned int>("planet_specular_map", 2);
+  main_shader.set<unsigned int>("selected_index", 0); // TODO!
+  main_shader.set<bool>("buffer_mode", false);
 
+  // Render the globe
+  main_shader.set<bool>("use_texture", true);
   earth_texture.use(0);
   earth_normal_map.use(1);
   earth_specular_map.use(2);
   globe.render(globe_instances);
-
   main_shader.set<bool>("use_texture", false);
+
   {
     std::lock_guard<std::mutex> guard(circle_instances.mutex);
+
+    // Render satellite indexes
+    index_buffer.bind(true);
+    glClear(GL_COLOR_BUFFER_BIT);
+    main_shader.set<bool>("buffer_mode", true);
+    circles.render(circle_instances.data);
+    index_buffer.bind(false);
+    main_shader.set<bool>("buffer_mode", false);
+
+    // Render satellites to the screen
     circles.render(circle_instances.data);
   }
 

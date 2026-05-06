@@ -62,4 +62,5 @@ private:
   Texture earth_specular_map;
   InstancedMesh globe;
   InstancedMesh circles;
+  Framebuffer index_buffer;
 };
