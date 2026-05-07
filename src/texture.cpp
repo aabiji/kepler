@@ -56,44 +56,65 @@ void Texture::init(std::vector<std::string> paths) {
 }
 
 Framebuffer::~Framebuffer() {
-  glDeleteFramebuffers(1, &fbo);
-  glDeleteTextures(1, &texture);
+  if (initialized) {
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &texture);
+    glDeleteRenderbuffers(1, &rbo);
+  }
 }
 
 void Framebuffer::bind(bool use) {
+  if (!initialized)
+    THROW_ERROR("Uninitialized framebuffer");
   glBindFramebuffer(GL_FRAMEBUFFER, use ? fbo : 0);
 }
 
 unsigned int Framebuffer::read_value(int x, int y) {
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+  if (!initialized)
+    THROW_ERROR("Uninitialized framebuffer");
   unsigned int value;
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+  glReadBuffer(GL_COLOR_ATTACHMENT0);
   glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &value);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
   return value;
 }
 
 void Framebuffer::resize(int width, int height) {
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER,
-               GL_UNSIGNED_INT, nullptr);
-  glViewport(0, 0, width, height);
-}
+  auto create_attachments = [&]() {
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER,
+                 GL_UNSIGNED_INT, nullptr);
 
-void Framebuffer::init(int width, int height) {
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+  };
+
+  if (initialized) {
+    create_attachments();
+    return;
+  }
+
   glGenFramebuffers(1, &fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
   glGenTextures(1, &texture);
-  resize(width, height);
+  glGenRenderbuffers(1, &rbo);
+  create_attachments();
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
-                         texture, 0);
+  glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-  GLenum attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-  glDrawBuffers(2, attachments);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         texture, 0);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                            GL_RENDERBUFFER, rbo);
+
+  GLenum attachments[] = {GL_COLOR_ATTACHMENT0};
+  glDrawBuffers(1, attachments);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     THROW_ERROR("Incomplete frame buffer");
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  initialized = true;
 }

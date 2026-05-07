@@ -7,13 +7,11 @@ layout(location = 3) in vec4 in_tangent; // xyz=tangent, w=handedness
 
 uniform mat4 view;
 uniform mat4 projection;
-uniform bool buffer_mode;
 
 out vec2 texture_coords;
 out vec4 obj_color;
 out vec3 obj_pos;
 out mat3 tbn_matrix;
-flat out uint instance_index;
 
 struct InstanceData {
     mat4 model_matrix;
@@ -45,20 +43,16 @@ void main() {
         obj_pos = vec3(p);
     }
 
-    // No need for lighting calculations when writing a framebuffer
-    if (!buffer_mode) {
-        // First map the vectors from object space to world space, then compute a
-        // matrix to map from tangent space (surface of the object) to world space
-        mat3 nm = mat3(d.normal_matrix);
-        vec3 N = normalize(nm * in_normal);
-        vec3 T = normalize(nm * in_tangent.xyz);
-        // Make sure the vectors are perpendicular to the normal
-        T = normalize(T - N * dot(T, N));
-        vec3 B = cross(N, T) * in_tangent.w;
-        tbn_matrix = mat3(T, B, N);
-    }
+    // First map the vectors from object space to world space, then compute a
+    // matrix to map from tangent space (surface of the object) to world space
+    mat3 nm = mat3(d.normal_matrix);
+    vec3 N = normalize(nm * in_normal);
+    vec3 T = normalize(nm * in_tangent.xyz);
+    // Make sure the vectors are perpendicular to the normal
+    T = normalize(T - N * dot(T, N));
+    vec3 B = cross(N, T) * in_tangent.w;
+    tbn_matrix = mat3(T, B, N);
 
     obj_color = d.color;
     texture_coords = in_uv;
-    instance_index = gl_InstanceID;
 }

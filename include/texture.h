@@ -16,12 +16,13 @@ private:
 class Framebuffer {
 public:
   ~Framebuffer();
+  Framebuffer() : initialized(false) {}
 
   void bind(bool use);
-  void init(int width, int height);
   void resize(int width, int height);
   unsigned int read_value(int x, int y);
 
 private:
-  unsigned int fbo, texture;
+  bool initialized;
+  unsigned int fbo, rbo, texture;
 };

@@ -7,7 +7,7 @@
 #include "debug.h"
 #include "shader.h"
 
-unsigned int load_shader(const char *path, int type) {
+unsigned int load_shader(std::string path, int type) {
   auto size = std::filesystem::file_size(path);
   std::string contents(size, '\0');
   std::ifstream file(path);
@@ -30,9 +30,9 @@ unsigned int load_shader(const char *path, int type) {
   return id;
 }
 
-void Shader::init(const char *vshader_path, const char *fshader_path) {
-  unsigned int vertex = load_shader(vshader_path, GL_VERTEX_SHADER);
-  unsigned int fragment = load_shader(fshader_path, GL_FRAGMENT_SHADER);
+void Shader::init(std::string vertex_shader, std::string fragment_shader) {
+  unsigned int vertex = load_shader(vertex_shader, GL_VERTEX_SHADER);
+  unsigned int fragment = load_shader(fragment_shader, GL_FRAGMENT_SHADER);
 
   program = glCreateProgram();
   glAttachShader(program, vertex);

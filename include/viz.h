@@ -19,15 +19,16 @@ public:
 
 struct InputState {
   float yscroll;
+  glm::ivec2 window_size;
   glm::vec2 cursor_delta;
   glm::vec2 prev_cursor;
   std::set<int> keys;
-  glm::mat4 projection;
   bool mouse_pressed;
+  bool resized;
 
   InputState()
-      : yscroll(0), cursor_delta(0.0), prev_cursor(0.0), projection(1.0),
-        mouse_pressed(false) {}
+      : yscroll(0), cursor_delta(0.0), prev_cursor(0.0), mouse_pressed(false),
+        resized(false) {}
 };
 
 class Visualizer {
@@ -41,10 +42,12 @@ private:
   void set_callbacks();
   void init_scene_objects();
   void render_scene();
+  void render_satellites();
 
   GLFWwindow *window;
   InputState state;
 
+  glm::mat4 projection;
   glm::vec3 sun_pos;
   double constellation_time_step;
 
@@ -55,6 +58,7 @@ private:
   Camera camera;
   Shader main_shader;
   Shader cubemap_shader;
+  Shader framebuffer_shader;
   Skybox skybox;
   Texture cubemap_texture;
   Texture earth_texture;
@@ -62,5 +66,5 @@ private:
   Texture earth_specular_map;
   InstancedMesh globe;
   InstancedMesh circles;
-  Framebuffer index_buffer;
+  Framebuffer framebuffer;
 };

@@ -27,6 +27,7 @@ void Visualizer::create_window(int width, int height) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 
   window =
       glfwCreateWindow(width, height, "LEO Visualization", nullptr, nullptr);
@@ -37,17 +38,15 @@ void Visualizer::create_window(int width, int height) {
   if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) == 0)
     THROW_ERROR("Failed to load the OpenGL context");
 
-  state.projection =
-      glm::perspective((float)std::numbers::pi / 4.0f,
-                       (float)width / (float)height, 0.1f, 100.0f);
-  glEnable(GL_DEPTH_TEST);
-  index_buffer.init(width, height);
+  state.window_size = glm::ivec2(width, height);
+  projection = glm::perspective((float)std::numbers::pi / 4.0f,
+                                (float)width / (float)height, 0.1f, 100.0f);
 }
 
 void Visualizer::set_callbacks() {
   glfwSetWindowUserPointer(window, &state);
 
-  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+  glEnable(GL_DEPTH_TEST);
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
   glDebugMessageCallback(gl_debug_callback, nullptr);
@@ -78,10 +77,8 @@ void Visualizer::set_callbacks() {
   glfwSetWindowSizeCallback(window, [](GLFWwindow *window, int w, int h) {
     InputState *state =
         static_cast<InputState *>(glfwGetWindowUserPointer(window));
-    state->projection = glm::perspective((float)std::numbers::pi / 4.0f,
-                                         (float)w / (float)h, 0.1f, 100.0f);
-    glViewport(0, 0, w, h);
-    // TODO: resize the frame buffer
+    state->resized = true;
+    state->window_size = glm::ivec2(w, h);
   });
 
   glfwSetCursorPosCallback(window, [](GLFWwindow *window, double x, double y) {
@@ -102,18 +99,24 @@ void Visualizer::set_callbacks() {
 }
 
 void Visualizer::init_scene_objects() {
-  main_shader.init("../assets/shaders/main_vertex.glsl",
-                   "../assets/shaders/main_fragment.glsl");
-  cubemap_shader.init("../assets/shaders/cubemap_vertex.glsl",
-                      "../assets/shaders/cubemap_fragment.glsl");
-  cubemap_texture.init(
-      {"../assets/textures/cubemap/px.png", "../assets/textures/cubemap/nx.png",
-       "../assets/textures/cubemap/py.png", "../assets/textures/cubemap/ny.png",
-       "../assets/textures/cubemap/pz.png",
-       "../assets/textures/cubemap/nz.png"});
-  earth_texture.init({"../assets/textures/earth/day.jpg"});
-  earth_normal_map.init({"../assets/textures/earth/normal.png"});
-  earth_specular_map.init({"../assets/textures/earth/specular.png"});
+  auto spath = [](const char *name) {
+    return std::format("../assets/shaders/{}.glsl", name);
+  };
+  main_shader.init(spath("vmain"), spath("fmain"));
+  cubemap_shader.init(spath("vcubemap"), spath("fcubemap"));
+  framebuffer_shader.init(spath("vbuffer"), spath("fbuffer"));
+
+  std::string folder = "cubemap";
+  auto tpath = [&](const char *filename) {
+    return std::format("../assets/textures/{}/{}", folder, filename);
+  };
+  cubemap_texture.init({tpath("px.png"), tpath("nx.png"), tpath("py.png"),
+                        tpath("ny.png"), tpath("pz.png"), tpath("nz.png")});
+
+  folder = "earth";
+  earth_texture.init({tpath("day.jpg")});
+  earth_normal_map.init({tpath("normal.png")});
+  earth_specular_map.init({tpath("specular.png")});
 
   circles = create_circle_mesh(10);
   globe = create_unit_sphere(32, 32);
@@ -126,9 +129,10 @@ void Visualizer::init_scene_objects() {
   simulation_thread =
       std::jthread(simulate_satellites, "../assets/starlink.csv",
                    std::ref(circle_instances));
+
+  framebuffer.resize(state.window_size.x, state.window_size.y);
 }
 
-#include <iostream>
 void Visualizer::run() {
   double x, y;
   glfwGetCursorPos(window, &x, &y);
@@ -137,6 +141,7 @@ void Visualizer::run() {
   while (!glfwWindowShouldClose(window)) {
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, state.window_size.x, state.window_size.y);
 
     // clang-format off
     if (state.keys.contains(GLFW_KEY_W)) camera.move_vertically(true);
@@ -146,13 +151,21 @@ void Visualizer::run() {
     if (state.yscroll != 0) camera.zoom(state.yscroll < 0);
     if (state.mouse_pressed) {
       camera.rotate_orientation(state.cursor_delta, 0.001);
-      unsigned int id = index_buffer.read_value(state.prev_cursor.x, state.prev_cursor.y);
-      std::cout << "Satellite id: " << id << "\n";
+      // Opengl defines (0, 0) to be the bottom left
+      int y = state.window_size.y - state.prev_cursor.y;
+      unsigned int id = framebuffer.read_value(state.prev_cursor.x, y);
+    }
+    if (state.resized) {
+      int w = state.window_size.x, h = state.window_size.y;
+      projection = glm::perspective((float)std::numbers::pi / 4.0f,
+                                           (float)w / (float)h, 0.1f, 100.0f);
+      framebuffer.resize(w, h);
     }
     // clang-format on
 
     state.yscroll = 0;
     state.cursor_delta = glm::vec2(0.0);
+    state.resized = false;
     render_scene();
 
     glfwSwapBuffers(window);
@@ -160,20 +173,34 @@ void Visualizer::run() {
   }
 }
 
-void Visualizer::render_scene() {
-  glm::mat4 v = camera.view_matrix();
-  glm::mat4 v_no_translation = glm::mat4(glm::mat3(v));
+void Visualizer::render_satellites() {
+  std::lock_guard<std::mutex> guard(circle_instances.mutex);
 
+  // Render circles indexes to the framebuffer
+  framebuffer.bind(true);
+  framebuffer_shader.use();
+  framebuffer_shader.set<glm::mat4>("view", camera.view_matrix());
+  framebuffer_shader.set<glm::mat4>("projection", projection);
+
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glViewport(0, 0, state.window_size.x, state.window_size.y);
+  circles.render(circle_instances.data);
+  framebuffer.bind(false);
+
+  // Render circles to the screen
   main_shader.use();
-  main_shader.set<glm::mat4>("view", v);
-  main_shader.set<glm::mat4>("projection", state.projection);
+  circles.render(circle_instances.data);
+}
+
+void Visualizer::render_scene() {
+  main_shader.use();
+  main_shader.set<glm::mat4>("view", camera.view_matrix());
+  main_shader.set<glm::mat4>("projection", projection);
   main_shader.set<glm::vec3>("view_pos", camera.get_position());
   main_shader.set<glm::vec3>("sun_pos", sun_pos);
   main_shader.set<unsigned int>("planet_texture", 0);
   main_shader.set<unsigned int>("planet_normal_map", 1);
   main_shader.set<unsigned int>("planet_specular_map", 2);
-  main_shader.set<unsigned int>("selected_index", 0); // TODO!
-  main_shader.set<bool>("buffer_mode", false);
 
   // Render the globe
   main_shader.set<bool>("use_texture", true);
@@ -183,25 +210,13 @@ void Visualizer::render_scene() {
   globe.render(globe_instances);
   main_shader.set<bool>("use_texture", false);
 
-  {
-    std::lock_guard<std::mutex> guard(circle_instances.mutex);
-
-    // Render satellite indexes
-    index_buffer.bind(true);
-    glClear(GL_COLOR_BUFFER_BIT);
-    main_shader.set<bool>("buffer_mode", true);
-    circles.render(circle_instances.data);
-    index_buffer.bind(false);
-    main_shader.set<bool>("buffer_mode", false);
-
-    // Render satellites to the screen
-    circles.render(circle_instances.data);
-  }
+  render_satellites();
 
   // Render the skybox
+  glm::mat4 view_no_translation = glm::mat4(glm::mat3(camera.view_matrix()));
   cubemap_shader.use();
-  cubemap_shader.set<glm::mat4>("projection", state.projection);
-  cubemap_shader.set<glm::mat4>("view", v_no_translation);
+  cubemap_shader.set<glm::mat4>("projection", projection);
+  cubemap_shader.set<glm::mat4>("view", view_no_translation);
   glDepthFunc(GL_LEQUAL);
   cubemap_texture.use(0);
   skybox.render();
