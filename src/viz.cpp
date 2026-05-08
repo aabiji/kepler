@@ -131,6 +131,7 @@ void Visualizer::init_scene_objects() {
                    std::ref(circle_instances));
 
   framebuffer.resize(state.window_size.x, state.window_size.y);
+  selected_satellite = 0;
 }
 
 void Visualizer::run() {
@@ -153,7 +154,7 @@ void Visualizer::run() {
       camera.rotate_orientation(state.cursor_delta, 0.001);
       // Opengl defines (0, 0) to be the bottom left
       int y = state.window_size.y - state.prev_cursor.y;
-      unsigned int id = framebuffer.read_value(state.prev_cursor.x, y);
+      selected_satellite = framebuffer.read_value(state.prev_cursor.x, y);
     }
     if (state.resized) {
       int w = state.window_size.x, h = state.window_size.y;
@@ -182,8 +183,8 @@ void Visualizer::render_satellites() {
   framebuffer_shader.set<glm::mat4>("view", camera.view_matrix());
   framebuffer_shader.set<glm::mat4>("projection", projection);
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glViewport(0, 0, state.window_size.x, state.window_size.y);
+  framebuffer.clear();
   circles.render(circle_instances.data);
   framebuffer.bind(false);
 
@@ -194,13 +195,14 @@ void Visualizer::render_satellites() {
 
 void Visualizer::render_scene() {
   main_shader.use();
+  main_shader.set<unsigned int>("selected_index", selected_satellite);
   main_shader.set<glm::mat4>("view", camera.view_matrix());
   main_shader.set<glm::mat4>("projection", projection);
   main_shader.set<glm::vec3>("view_pos", camera.get_position());
   main_shader.set<glm::vec3>("sun_pos", sun_pos);
-  main_shader.set<unsigned int>("planet_texture", 0);
-  main_shader.set<unsigned int>("planet_normal_map", 1);
-  main_shader.set<unsigned int>("planet_specular_map", 2);
+  main_shader.set<int>("planet_texture", 0);
+  main_shader.set<int>("planet_normal_map", 1);
+  main_shader.set<int>("planet_specular_map", 2);
 
   // Render the globe
   main_shader.set<bool>("use_texture", true);

@@ -18,6 +18,7 @@ public:
   ~Framebuffer();
   Framebuffer() : initialized(false) {}
 
+  void clear();
   void bind(bool use);
   void resize(int width, int height);
   unsigned int read_value(int x, int y);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "satellite.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -50,9 +51,10 @@ private:
   glm::mat4 projection;
   glm::vec3 sun_pos;
   double constellation_time_step;
+  unsigned int selected_satellite;
 
   std::jthread simulation_thread;
-  SharedInstances circle_instances;
+  SharedSatelliteInfo circle_instances;
   std::vector<InstanceData> globe_instances;
 
   Camera camera;

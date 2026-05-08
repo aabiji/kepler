@@ -69,6 +69,12 @@ void Framebuffer::bind(bool use) {
   glBindFramebuffer(GL_FRAMEBUFFER, use ? fbo : 0);
 }
 
+void Framebuffer::clear() {
+  GLuint clearValue = 0;
+  glClearBufferuiv(GL_COLOR, 1, &clearValue);
+  glClear(GL_DEPTH_BUFFER_BIT);
+}
+
 unsigned int Framebuffer::read_value(int x, int y) {
   if (!initialized)
     THROW_ERROR("Uninitialized framebuffer");

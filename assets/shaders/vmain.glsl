@@ -7,11 +7,13 @@ layout(location = 3) in vec4 in_tangent; // xyz=tangent, w=handedness
 
 uniform mat4 view;
 uniform mat4 projection;
+uniform uint selected_index;
 
 out vec2 texture_coords;
 out vec4 obj_color;
 out vec3 obj_pos;
 out mat3 tbn_matrix;
+flat out uint selected;
 
 struct InstanceData {
     mat4 model_matrix;
@@ -30,7 +32,7 @@ void main() {
     // Render 2D shapes the same way regardless of camera orientation.
     // Objects that are further away will appear smaller.
     if (d.is_2d == 1) {
-        float size = 0.01;
+        float size = 0.005;
         vec3 world_pos = d.model_matrix[3].xyz;
         vec4 view_pos = view * vec4(world_pos, 1.0);
 
@@ -55,4 +57,5 @@ void main() {
 
     obj_color = d.color;
     texture_coords = in_uv;
+    selected = selected_index == (gl_InstanceID + 1) ? 1 : 0;
 }

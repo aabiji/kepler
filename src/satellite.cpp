@@ -14,6 +14,7 @@
 
 const double DAY_SECONDS = 86400.0;
 using sysclock = std::chrono::system_clock;
+using PositionVelocity = std::tuple<glm::vec3, glm::vec3>;
 
 struct Satellite {
   std::string name;
@@ -170,11 +171,14 @@ double gmst_time(perturb::JulianDate date) {
   return normalized < 0.0 ? normalized + 2.0 * pi : normalized;
 }
 
-glm::vec3 propagate(perturb::Satellite &satellite, perturb::JulianDate time) {
+PositionVelocity propagate(perturb::Satellite &satellite,
+                           perturb::JulianDate time) {
   perturb::StateVector s;
   handle_error(satellite.propagate(time, s));
   glm::vec3 teme_position =
       glm::vec3(s.position[0], s.position[1], s.position[2]);
+  glm::vec3 teme_velocity =
+      glm::vec3(s.velocity[0], s.velocity[1], s.velocity[2]);
 
   // Convert the position in the TEME reference frame to the ITRS reference frame
   double angle = gmst_time(time);
@@ -188,16 +192,18 @@ glm::vec3 propagate(perturb::Satellite &satellite, perturb::JulianDate time) {
   itrs_position *= 1.0 / 6371.0;
 
   // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
-  return glm::vec3(itrs_position.x, itrs_position.z, itrs_position.y);
+  itrs_position = glm::vec3(itrs_position.x, itrs_position.z, itrs_position.y);
+
+  return std::make_tuple(itrs_position, teme_velocity);
 }
 
 // Predict the full trajectory of a satellite given an initial configuration
-std::vector<glm::vec3> compute_trajectory(Satellite satellite) {
+std::vector<PositionVelocity> compute_trajectory(Satellite satellite) {
   double period = DAY_SECONDS / satellite.mean_motion;
   perturb::JulianDate time = get_current_time();
   double step = 30;
 
-  std::vector<glm::vec3> trajectory;
+  std::vector<PositionVelocity> trajectory;
   for (double seconds = 0; seconds < period; seconds += step) {
     trajectory.push_back(propagate(satellite.model, time));
     time += step / DAY_SECONDS;
@@ -206,7 +212,7 @@ std::vector<glm::vec3> compute_trajectory(Satellite satellite) {
 }
 
 void simulate_satellites(std::stop_token token, const char *input_csv_path,
-                         SharedInstances &shared) {
+                         SharedSatelliteInfo &shared) {
   std::vector<Satellite> satellites = load_satellite_data(input_csv_path);
   perturb::JulianDate simulation_time = get_current_time();
 
@@ -218,7 +224,7 @@ void simulate_satellites(std::stop_token token, const char *input_csv_path,
   auto step = [&]() {
     std::vector<InstanceData> temp(satellites.size());
     for (size_t i = 0; i < satellites.size(); i++) {
-      glm::vec3 position = propagate(satellites[i].model, simulation_time);
+      auto [position, _] = propagate(satellites[i].model, simulation_time);
       temp[i] = InstanceData(position, glm::vec3(0.01, 0.01, 0.01));
       temp[i].color = glm::vec4(0.0, 1.0, 0.0, 1.0);
       temp[i].is_2d = true;

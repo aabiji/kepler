@@ -23,18 +23,15 @@ flat out uint instance_index;
 
 void main() {
     InstanceData d = data[gl_InstanceID];
+
+    // Adding 1 to differentiate between the background and the indexes
     instance_index = gl_InstanceID + 1;
 
     // Render 2D shapes the same way regardless of camera orientation.
     // Objects that are further away will appear smaller.
-    if (d.is_2d == 1) {
-        float size = 0.01;
-        vec3 world_pos = d.model_matrix[3].xyz;
-        vec4 view_pos = view * vec4(world_pos, 1.0);
-        view_pos.xy += in_pos.xy * size;
-        gl_Position = projection * view_pos;
-    } else {
-        vec4 p = d.model_matrix * vec4(in_pos, 1.0);
-        gl_Position = projection * view * p;
-    }
+    float size = 0.005;
+    vec3 world_pos = d.model_matrix[3].xyz;
+    vec4 view_pos = view * vec4(world_pos, 1.0);
+    view_pos.xy += in_pos.xy * size;
+    gl_Position = projection * view_pos;
 }
