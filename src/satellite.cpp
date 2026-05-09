@@ -2,7 +2,9 @@
 #include <ctime>
 #include <fstream>
 #include <glm/gtc/matrix_access.hpp>
+#include <httplib.h>
 #include <perturb/tle.hpp>
+#include <string_view>
 #include <utility>
 
 #include "debug.h"
@@ -31,104 +33,74 @@ void handle_error(perturb::Sgp4Error err) {
     THROW_ERROR("ERROR: {}", msg);
 }
 
-double epoch_day_of_year(std::string timestamp) {
-  // Parse the ISO8601 string
-  // And, yes this TLE convention is diabolically cursed.
-  int year = std::stoi(timestamp.substr(2, 2)); // Last two digits
-  int full_year = year >= 57 ? 1900 + year : 2000 + year;
+std::string fetch_tle_data(std::string cache_path) {
+  auto duration = sysclock::now().time_since_epoch();
+  auto seconds =
+      std::chrono::duration_cast<std::chrono::seconds>(duration).count();
 
-  int month = std::stoi(timestamp.substr(5, 2));
-  int day = std::stoi(timestamp.substr(8, 2));
-  int hour = std::stoi(timestamp.substr(11, 2));
-  int minute = std::stoi(timestamp.substr(14, 2));
-  int second = std::stoi(timestamp.substr(17, 2));
-  // TODO: don't assume this has fractional seconds
-  double fractional_second = std::stod("0." + timestamp.substr(20));
+  // Prefer to read the cached data
+  std::ifstream infile(cache_path);
+  if (infile.is_open()) {
+    std::string first_line;
+    std::getline(infile, first_line);
 
-  // Accumulate days
-  int month_days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  if ((full_year % 4 == 0) && (full_year % 100 != 0 || full_year % 400 == 0))
-    month_days[1] = 29; // Leap year
+    int64_t timestamp = std::stoll(first_line);
+    double elapsed_hours = double(seconds - timestamp) / 3600.0;
+    bool need_refresh = elapsed_hours >= 2.0;
 
-  double day_of_year = day;
-  for (int m = 0; m < month - 1; m++)
-    day_of_year += month_days[m];
+    if (!need_refresh) { // Read the rest of the file
+      std::stringstream buffer;
+      buffer << infile.rdbuf();
+      return buffer.str();
+    }
+  }
 
-  // Add the day fraction
-  double elapsed_seconds =
-      hour * 3600.0 + minute * 60.0 + second + fractional_second;
-  return day_of_year + elapsed_seconds / DAY_SECONDS;
+  // Here, there was an error reading the file, or a refresh is needed
+  httplib::Client client("https://celestrak.org");
+  auto response = client.Get("/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE");
+  if (!response || response->status != 200)
+    THROW_ERROR("Failed to fetch");
+
+  std::ofstream outfile(cache_path, std::ios::trunc);
+  outfile << seconds << "\n" << response->body;
+  return response->body;
 }
 
-std::vector<Satellite> load_satellite_data(std::string csv_path) {
-  std::ifstream file(csv_path);
-  if (!file.good() || !file.is_open())
-    THROW_ERROR("Failed to open {}", csv_path);
+double parse_tle_exp(std::string s) {
+  s.erase(remove(s.begin(), s.end(), ' '), s.end());
+  std::string mantissa = s.substr(0, s.size() - 2);
+  std::string exponent = s.substr(s.size() - 2);
+  return std::stod("0." + mantissa + "e" + exponent);
+}
 
-  bool column_line = true;
-  std::string line = "";
+std::vector<Satellite> load_satellite_data(std::string &str) {
   std::vector<Satellite> output;
-
-  while (std::getline(file, line)) {
-    if (column_line) {
-      column_line = false;
-      continue;
-    }
-
+  int block_length = 24 + 69 * 2;
+  for (size_t i = 0; i < str.length(); i += block_length) {
     perturb::TwoLineElement info;
-    std::string name = "", id = "";
-    size_t current = 0, column = 0;
+    std::string name = std::string(str.substr(i, 24));
+    std::string norad_id = std::string(str.substr(i + 26, 5));
 
-    // NOTE: the comma seperated values are expected to be in the order that
-    // Celestrak defines
-    while (current < line.length()) {
-      size_t next = std::min(line.find(",", current), line.length());
-      std::string str = line.substr(current, next - current);
-      current = next + 1;
-      column++;
-
-      // clang-format off
-      switch (column - 1) {
-        case 0: name = str; break;
-        case 1: id = str; break;
-        case 2: {
-          int year = std::stoi(str.substr(2, 2)); // Last two digits
-          info.epoch_day_of_year = epoch_day_of_year(str);
-          info.launch_year = year;
-          info.epoch_year = year;
-          break;
-        }
-        case 3: info.mean_motion = std::stod(str); break;
-        case 4: info.eccentricity = std::stod(str); break;
-        case 5: info.inclination = std::stod(str); break;
-        case 6: info.raan = std::stod(str); break;
-        case 7: info.arg_of_perigee = std::stod(str); break;
-        case 8: info.mean_anomaly = std::stod(str); break;
-        case 9: info.ephemeris_type = std::stol(str); break;
-        case 10: info.classification = str[0]; break;
-        case 11: {
-          for (size_t i = 0; i < str.length(); i++) {
-            info.catalog_number[i] = str[i];
-          }
-          break;
-        }
-        case 12: info.element_set_number = std::stoi(str); break;
-        case 13: info.revolution_number = std::stol(str); break;
-        case 14: info.b_star = std::stod(str); break;
-        case 15: info.n_dot = std::stod(str); break;
-        case 16: info.n_ddot = std::stod(str); break;
-      };
-      // clang-format on
-    }
+    info.ephemeris_type = str[i + 86];
+    info.epoch_year = std::stoi(str.substr(i + 41, 2));
+    info.epoch_day_of_year = std::stod(str.substr(i + 43, 12));
+    info.n_ddot = parse_tle_exp(str.substr(i + 65, 8));
+    info.b_star = parse_tle_exp(str.substr(i + 74, 8));
+    info.b_star = std::stod(str.substr(i + 74, 8));
+    info.element_set_number = std::stoi(str.substr(i + 87, 4));
+    info.inclination = std::stod(str.substr(i + 97, 8));
+    info.raan = std::stod(str.substr(i + 106, 8));
+    info.eccentricity = std::stod("0." + std::string(str.substr(i + 115, 7)));
+    info.arg_of_perigee = std::stod(str.substr(i + 123, 8));
+    info.mean_anomaly = std::stod(str.substr(i + 132, 8));
+    info.mean_motion = std::stod(str.substr(i + 141, 11));
+    info.revolution_number = std::stoi(str.substr(i + 152, 5));
 
     auto model = perturb::Satellite(info);
     handle_error(model.last_error());
-    std::string norad_id = "", epoch = "";
-    output.push_back({name, norad_id, epoch, info.mean_motion, info.inclination,
+    output.push_back({name, norad_id, "", info.mean_motion, info.inclination,
                       info.eccentricity, model});
   }
-
-  file.close();
   return output;
 }
 

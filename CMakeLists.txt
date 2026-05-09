@@ -34,6 +34,12 @@ FetchContent_Declare(
     GIT_TAG 1.0.3)
 FetchContent_MakeAvailable(glm)
 
+FetchContent_Declare(
+    cpp_httplib
+    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+    GIT_TAG v0.43.4)
+FetchContent_MakeAvailable(cpp_httplib)
+
 set(IMGUI_VERSION 1.92.7)
 FetchContent_Declare(
     imgui
@@ -58,6 +64,8 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
 target_link_libraries(imgui PUBLIC glfw)
 
+find_package(OpenSSL REQUIRED)
+
 add_executable(${PROJECT_NAME}
     src/camera.cpp
     src/debug.cpp
@@ -70,7 +78,7 @@ add_executable(${PROJECT_NAME}
     src/ui.cpp
 )
 target_include_directories(${PROJECT_NAME} PRIVATE include)
-target_link_libraries(${PROJECT_NAME} perturb imgui glm glfw glad stb)
+target_link_libraries(${PROJECT_NAME} perturb imgui glm glfw glad stb httplib OpenSSL::SSL OpenSSL::Crypto)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:

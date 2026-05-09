@@ -62,7 +62,7 @@ private:
   std::jthread simulation_thread;
   std::future<std::vector<Satellite>> load_future;
 
-  UI ui;
+  InfoUI ui;
   Camera camera;
   Shader main_shader;
   Shader cubemap_shader;

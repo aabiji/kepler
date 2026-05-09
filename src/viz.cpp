@@ -1,7 +1,9 @@
+#include <exception>
 #include <future>
 #include <glad/glad.h>
 
 #include "debug.h"
+#include "satellite.h"
 #include "viz.h"
 
 // This is done so that GLFW can be terminated after
@@ -132,7 +134,12 @@ void Visualizer::init_components() {
   framebuffer.resize(state.window_size.x, state.window_size.y);
 
   load_future = std::async(std::launch::async, []() {
-    return load_satellite_data("../assets/satellites.csv");
+    try {
+      std::string data = fetch_tle_data("../assets/active-satellites.tle");
+      return load_satellite_data(data);
+    } catch (...) {
+      THROW_ERROR("Failed to load TLE data");
+    }
   });
 }
 

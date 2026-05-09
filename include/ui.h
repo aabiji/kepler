@@ -5,8 +5,8 @@
 
 #include "satellite.h"
 
-struct UI {
-  ~UI();
+struct InfoUI {
+  ~InfoUI();
   void init(GLFWwindow *window);
   void render(Satellite satellite);
   bool active();

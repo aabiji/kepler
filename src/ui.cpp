@@ -22,15 +22,15 @@ void labelled_value(std::string label, std::string value) {
   ImGui::PopStyleColor();
 }
 
-UI::~UI() {
+InfoUI::~InfoUI() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 }
 
-bool UI::active() { return ImGui::GetIO().WantCaptureMouse; }
+bool InfoUI::active() { return ImGui::GetIO().WantCaptureMouse; }
 
-void UI::init(GLFWwindow *window) {
+void InfoUI::init(GLFWwindow *window) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
@@ -49,16 +49,20 @@ void UI::init(GLFWwindow *window) {
   ImGui_ImplOpenGL3_Init("#version 460");
 }
 
-void UI::render(Satellite satellite) {
+void InfoUI::render(Satellite satellite) {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
-
-  // Right aligned window
-  ImVec2 size = ImGui::GetIO().DisplaySize;
-  ImGui::SetNextWindowPos(ImVec2(size.x - 10, 10), ImGuiCond_Always,
-                          ImVec2(1.0f, 0.0f));
   ImGui::NewFrame();
-  ImGui::Begin("Container");
+
+  ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
+                          ImGuiCond_Always,
+                          ImVec2(1.0f, 0.0f)); // Pivot to the top right
+  ImGui::SetNextWindowSize(ImVec2(350, 125), ImGuiCond_Always);
+  ImGuiWindowFlags flags =
+      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+  ImGui::Begin("Window", nullptr, flags);
 
   labelled_value(satellite.name, satellite.norad_id);
   labelled_value(
