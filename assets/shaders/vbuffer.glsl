@@ -11,7 +11,6 @@ uniform mat4 projection;
 struct InstanceData {
     mat4 model_matrix;
     mat4 normal_matrix;
-    vec4 color;
     int is_2d;
 };
 
@@ -29,7 +28,7 @@ void main() {
 
     // Render 2D shapes the same way regardless of camera orientation.
     // Objects that are further away will appear smaller.
-    float size = 0.005;
+    float size = 0.0075;
     vec3 world_pos = d.model_matrix[3].xyz;
     vec4 view_pos = view * vec4(world_pos, 1.0);
     view_pos.xy += in_pos.xy * size;

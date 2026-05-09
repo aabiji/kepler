@@ -15,9 +15,8 @@ struct alignas(16) Vertex {
 struct alignas(16) InstanceData {
   glm::mat4 model_matrix;
   glm::mat4 normal_matrix;
-  glm::vec4 color;
   int is_2d;
-  InstanceData(glm::vec3 position, glm::vec3 scale);
+  InstanceData(glm::vec3 position, glm::vec3 scale, bool flat);
   InstanceData() {}
 };
 
@@ -31,7 +30,7 @@ struct Skybox {
 class InstancedMesh {
 public:
   ~InstancedMesh();
-  InstancedMesh();
+  InstancedMesh() : initialized(false) {}
   explicit InstancedMesh(std::vector<Vertex> vertices,
                          std::vector<unsigned int> indices);
 

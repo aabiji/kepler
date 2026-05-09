@@ -1,15 +1,30 @@
 #pragma once
 
 #include <mutex>
+#include <perturb/perturb.hpp>
 #include <stop_token>
-#include <vector>
 
 #include "mesh.h"
 
-struct SharedSatelliteInfo {
+struct Satellite {
+  std::string name;
+  std::string norad_id;
+  std::string epoch;
+  double mean_motion;
+  double inclination;
+  double eccentricity;
+  perturb::Satellite model;
+};
+
+struct SharedInstanceData {
   std::vector<InstanceData> data;
   std::mutex mutex;
 };
 
-void simulate_satellites(std::stop_token token, const char *input_csv_path,
-                         SharedSatelliteInfo &shared);
+std::vector<Satellite> load_satellite_data(std::string csv_path);
+
+std::vector<glm::mat3> compute_trajectory(Satellite satellite);
+
+void simulate_satellites(std::stop_token token,
+                         const std::vector<Satellite> satellites,
+                         SharedInstanceData &shared);

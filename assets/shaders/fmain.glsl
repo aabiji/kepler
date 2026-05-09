@@ -1,7 +1,6 @@
 #version 460 core
 
 in vec2 texture_coords;
-in vec4 obj_color;
 in vec3 obj_pos;
 in mat3 tbn_matrix;
 flat in uint selected;
@@ -17,7 +16,7 @@ uniform sampler2D planet_specular_map;
 out vec4 fragment_color;
 
 vec4 phong_lighting() {
-    vec4 pixel = use_texture ? texture(planet_texture, texture_coords) : obj_color;
+    vec4 pixel = use_texture ? texture(planet_texture, texture_coords) : vec4(0.0, 1.0, 0.0, 1.0);
 
     vec3 normal_value = texture(planet_normal_map, texture_coords).rgb;
     vec3 normal;

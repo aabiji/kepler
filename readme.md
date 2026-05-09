@@ -6,32 +6,24 @@ Inspirations:
 
 TODO:
 
-- [ ] Zoom the visualization out to view satellites at further distance orbits
-    - Scale the visualization to render all the Celestrak satellites
+- Introduce a new struct to share Instances and Satellites between the 2 main and simulation threads
 
-- [ ] Color the circles based off of the satellite type:
-  (payload, rocket body, debris, unknown)
+- Increase zoom out distance to view satellites at further distance orbits
 
-- [ ] Trace satellite trajectories using curve line around the globe
+- Stop hardcoding asset paths
+    - Add a resource manager that'll verify the necessary files exist, map resource enum to actual paths, etc
 
-- [ ] Show satellite info in basic ImGUI UI when clicking on a circle:
-  (name, catalogue number, norad id, type, inclination, perigee,
-  apogee, velocity, lattitude, longittude, eccentricity, mean motion, epoch)
-    - https://github.com/ocornut/imgui/blob/master/examples/example_glfw_opengl3/main.cpp
+- Remove the color field from the satellite data, they should all have the same color, add new info fields to the `Satellite` struct
 
-    - [ ] Highlight the satellite circle when clicked
+- Use cpp-httplb to load TLE data from "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 
-    - [ ] List the number of each type of satellites next to a checkbox that can be used to toggle their filtering
+    - Switch from parsing CSV to parsing 3 line element data
 
-    - [ ] Search for a specific satellite by name and move camera towards it if found
+    - How many satellites will we have? Will we have to do optimizations?
 
-- [ ] Write a shell script to pull the latest Celestrack csv satellite data
+- Search for satellite by name or by norad ID. If found, treat the satellite as if it were selected
 
-- [ ] Reduce the app's startup time
-
-- [ ] Continue to drag the camera after the mouse is released
-
-- [ ] Improve startup time
+- Render the predicted orbit of a satellite at a time
 
 - [ ] Port to WASM, release project, finish the project by **May 13**
 

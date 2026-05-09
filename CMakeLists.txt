@@ -52,8 +52,11 @@ add_library(imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp)
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+target_link_libraries(imgui PUBLIC glfw)
 
 add_executable(${PROJECT_NAME}
     src/camera.cpp
@@ -64,6 +67,7 @@ add_executable(${PROJECT_NAME}
     src/shader.cpp
     src/texture.cpp
     src/viz.cpp
+    src/ui.cpp
 )
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_link_libraries(${PROJECT_NAME} perturb imgui glm glfw glad stb)

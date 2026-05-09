@@ -1,10 +1,7 @@
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
+#include <future>
 #include <glad/glad.h>
 
 #include "debug.h"
-#include "mesh.h"
-#include "satellite.h"
 #include "viz.h"
 
 // This is done so that GLFW can be terminated after
@@ -15,12 +12,14 @@ GLFWContext::~GLFWContext() { glfwTerminate(); }
 Visualizer::Visualizer(int width, int height) {
   create_window(width, height);
   set_callbacks();
-  init_scene_objects();
+  init_components();
 }
 
 Visualizer::~Visualizer() {
-  simulation_thread.request_stop();
-  simulation_thread.join();
+  if (simulation_thread.joinable()) {
+    simulation_thread.request_stop();
+    simulation_thread.join();
+  }
 }
 
 void Visualizer::create_window(int width, int height) {
@@ -98,7 +97,9 @@ void Visualizer::set_callbacks() {
       });
 }
 
-void Visualizer::init_scene_objects() {
+void Visualizer::init_components() {
+  ui.init(window);
+
   auto spath = [](const char *name) {
     return std::format("../assets/shaders/{}.glsl", name);
   };
@@ -124,14 +125,15 @@ void Visualizer::init_scene_objects() {
 
   constellation_time_step = 1; // Propagate every 1 second
   sun_pos = glm::vec3((1.0 / 6371.0) * 149600000.0, 0.0, 0.0);
-  globe_instances.push_back(InstanceData(glm::vec3(0.0), glm::vec3(1.0)));
-
-  simulation_thread =
-      std::jthread(simulate_satellites, "../assets/starlink.csv",
-                   std::ref(circle_instances));
+  globe_instances.push_back(
+      InstanceData(glm::vec3(0.0), glm::vec3(1.0), false));
+  selected_satellite = 0;
 
   framebuffer.resize(state.window_size.x, state.window_size.y);
-  selected_satellite = 0;
+
+  load_future = std::async(std::launch::async, []() {
+    return load_satellite_data("../assets/satellites.csv");
+  });
 }
 
 void Visualizer::run() {
@@ -149,18 +151,31 @@ void Visualizer::run() {
     if (state.keys.contains(GLFW_KEY_S)) camera.move_vertically(false);
     if (state.keys.contains(GLFW_KEY_A)) camera.rotate_position(false);
     if (state.keys.contains(GLFW_KEY_D)) camera.rotate_position(true);
-    if (state.yscroll != 0) camera.zoom(state.yscroll < 0);
-    if (state.mouse_pressed) {
-      camera.rotate_orientation(state.cursor_delta, 0.001);
-      // Opengl defines (0, 0) to be the bottom left
-      int y = state.window_size.y - state.prev_cursor.y;
-      selected_satellite = framebuffer.read_value(state.prev_cursor.x, y);
-    }
+
     if (state.resized) {
       int w = state.window_size.x, h = state.window_size.y;
       projection = glm::perspective((float)std::numbers::pi / 4.0f,
                                            (float)w / (float)h, 0.1f, 100.0f);
       framebuffer.resize(w, h);
+    }
+
+    if (!ui.active()) {
+      if (state.yscroll != 0) camera.zoom(state.yscroll < 0);
+
+      if (state.mouse_pressed) {
+        camera.rotate_orientation(state.cursor_delta, 0.001);
+        // Opengl defines (0, 0) to be the bottom left
+        int y = state.window_size.y - state.prev_cursor.y;
+        selected_satellite = framebuffer.read_value(state.prev_cursor.x, y);
+      }
+    }
+
+    if (load_future.valid()) {
+      auto status = load_future.wait_for(std::chrono::seconds(0));
+      if (status == std::future_status::ready) {
+        satellites = load_future.get();
+        simulation_thread = std::jthread(simulate_satellites, satellites, std::ref(circle_instances));
+      }
     }
     // clang-format on
 
@@ -223,4 +238,7 @@ void Visualizer::render_scene() {
   cubemap_texture.use(0);
   skybox.render();
   glDepthFunc(GL_LESS);
+
+  if (selected_satellite != 0)
+    ui.render(satellites[selected_satellite]);
 }
