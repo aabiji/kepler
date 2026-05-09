@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "debug.h"
+#include "misc.h"
 #include "shader.h"
 
 unsigned int load_shader(std::string path, int type) {

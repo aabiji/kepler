@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include <vector>
 
 #define THROW_ERROR(fmt, ...)                                                  \
   do {                                                                         \
@@ -14,3 +15,8 @@
 void gl_debug_callback(unsigned int src, unsigned int type, unsigned int id,
                        unsigned int severity, int _length, const char *message,
                        const void *_user_param);
+
+std::string font_path();
+std::vector<std::string> cubemap_texture_paths();
+std::vector<std::string> earth_texture_paths();
+std::vector<std::string> shader_paths();

@@ -2,7 +2,7 @@
 #include <future>
 #include <glad/glad.h>
 
-#include "debug.h"
+#include "misc.h"
 #include "satellite.h"
 #include "viz.h"
 
@@ -102,24 +102,17 @@ void Visualizer::set_callbacks() {
 void Visualizer::init_components() {
   ui.init(window);
 
-  auto spath = [](const char *name) {
-    return std::format("../assets/shaders/{}.glsl", name);
-  };
-  main_shader.init(spath("vmain"), spath("fmain"));
-  cubemap_shader.init(spath("vcubemap"), spath("fcubemap"));
-  framebuffer_shader.init(spath("vbuffer"), spath("fbuffer"));
+  auto sp = shader_paths();
+  auto et = earth_texture_paths();
 
-  std::string folder = "cubemap";
-  auto tpath = [&](const char *filename) {
-    return std::format("../assets/textures/{}/{}", folder, filename);
-  };
-  cubemap_texture.init({tpath("px.png"), tpath("nx.png"), tpath("py.png"),
-                        tpath("ny.png"), tpath("pz.png"), tpath("nz.png")});
+  main_shader.init(sp[0], sp[1]);
+  cubemap_shader.init(sp[2], sp[3]);
+  framebuffer_shader.init(sp[4], sp[5]);
 
-  folder = "earth";
-  earth_texture.init({tpath("day.jpg")});
-  earth_normal_map.init({tpath("normal.png")});
-  earth_specular_map.init({tpath("specular.png")});
+  earth_texture.init({et[0]});
+  earth_normal_map.init({et[1]});
+  earth_specular_map.init({et[2]});
+  cubemap_texture.init(cubemap_texture_paths());
 
   circles = create_circle_mesh(10);
   globe = create_unit_sphere(32, 32);
@@ -136,7 +129,7 @@ void Visualizer::init_components() {
 
   load_future = std::async(std::launch::async, []() {
     try {
-      std::string data = fetch_tle_data("../assets/active-satellites.tle");
+      std::string data = fetch_tle_data("active-satellites.tle");
       return load_satellite_data(data);
     } catch (const std::exception &e) {
       std::string str = e.what();

@@ -45,7 +45,7 @@ void Skybox::init() {
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(cube_positions), cube_positions,
                GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
   glEnableVertexAttribArray(0);
 }
 
@@ -62,11 +62,11 @@ InstanceData::InstanceData(glm::vec3 position, glm::vec3 scale, bool flat) {
   is_2d = flat;
 }
 
-InstancedMesh::InstancedMesh(InstancedMesh&& other) noexcept {
+InstancedMesh::InstancedMesh(InstancedMesh &&other) noexcept {
   *this = std::move(other);
 }
 
-InstancedMesh& InstancedMesh::operator=(InstancedMesh&& other) noexcept {
+InstancedMesh &InstancedMesh::operator=(InstancedMesh &&other) noexcept {
   if (this != &other) {
     if (initialized) {
       glDeleteVertexArrays(1, &vao);
@@ -112,19 +112,19 @@ InstancedMesh::InstancedMesh(std::vector<Vertex> vertices,
                indices.data(), GL_STATIC_DRAW);
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void*)offsetof(Vertex, position));
+                        (void *)offsetof(Vertex, position));
   glEnableVertexAttribArray(0);
 
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void*)offsetof(Vertex, uv));
+                        (void *)offsetof(Vertex, uv));
   glEnableVertexAttribArray(1);
 
   glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void*)offsetof(Vertex, normal));
+                        (void *)offsetof(Vertex, normal));
   glEnableVertexAttribArray(2);
 
   glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void*)offsetof(Vertex, tangent));
+                        (void *)offsetof(Vertex, tangent));
   glEnableVertexAttribArray(3);
 }
 
@@ -137,7 +137,7 @@ InstancedMesh::~InstancedMesh() {
   }
 }
 
-void InstancedMesh::render(std::vector<InstanceData>& data) {
+void InstancedMesh::render(std::vector<InstanceData> &data) {
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 
@@ -156,8 +156,8 @@ void InstancedMesh::render(std::vector<InstanceData>& data) {
                           data.size());
 }
 
-void compute_tangents(std::vector<Vertex>& vertices,
-                      std::vector<unsigned int>& indices) {
+void compute_tangents(std::vector<Vertex> &vertices,
+                      std::vector<unsigned int> &indices) {
   // Compute tangent and bitangent vectors
   std::vector<glm::vec3> tangents(vertices.size());
   std::vector<glm::vec3> bitangents(vertices.size());
@@ -173,7 +173,8 @@ void compute_tangents(std::vector<Vertex>& vertices,
 
     // Inverting the mapping from UV space to world space
     float determinant = delta_uv0.x * delta_uv1.y - delta_uv0.y * delta_uv1.x;
-    if (std::fabs(determinant) < 1e-8f) continue;  // Ignore degenerate UVs
+    if (std::fabs(determinant) < 1e-8f)
+      continue; // Ignore degenerate UVs
     glm::vec3 t = (delta_pos0 * delta_uv1.y - delta_pos1 * delta_uv0.y) *
                   (1.0f / determinant);
     glm::vec3 b = (delta_pos1 * delta_uv0.x - delta_pos0 * delta_uv1.x) *
@@ -205,7 +206,7 @@ InstancedMesh create_unit_sphere(int longitudes, int lattitudes) {
   // Add vertices
   for (int i = 0; i <= lattitudes; i++) {
     float lattitude_angle =
-        (pi / 2.0) - i * (pi / (float)lattitudes);  // -pi/2 to pi/2
+        (pi / 2.0) - i * (pi / (float)lattitudes); // -pi/2 to pi/2
     float xy = cos(lattitude_angle);
     float z = sin(lattitude_angle);
 

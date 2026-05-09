@@ -8,13 +8,13 @@ To build the project:
 sudo apt install mold ccache libssl-dev
 
 # Development build setup
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_LINKER_TYPE=MOLD
+cmake -S . -B build -G Ninja -D CMAKE_BUILD_TYPE=Debug -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_LINKER_TYPE=MOLD
+
+# Release build setup
+cmake -S . -B build -G Ninja -D CMAKE_BUILD_TYPE=Release
 ```
 
 TODO:
-- Stop hardcoding asset paths
-    - Add a resource manager that'll verify the necessary files exist, map resource enum to actual paths, etc
-
 - Render the predicted orbit of a satellite at a time
 
 - Handle exceptions

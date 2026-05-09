@@ -9,10 +9,10 @@
 
 #include "camera.h"
 #include "mesh.h"
+#include "panel.h"
 #include "satellite.h"
 #include "shader.h"
 #include "texture.h"
-#include "ui.h"
 
 class GLFWContext {
 public:

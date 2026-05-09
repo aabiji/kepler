@@ -30,7 +30,7 @@ struct Skybox {
 class InstancedMesh {
 public:
   ~InstancedMesh();
-  InstancedMesh() : initialized(false) {}
+  InstancedMesh() {}
   explicit InstancedMesh(std::vector<Vertex> vertices,
                          std::vector<unsigned int> indices);
 
@@ -43,7 +43,7 @@ public:
   void render(std::vector<InstanceData> &data);
 
 private:
-  bool initialized;
+  bool initialized = false;
   int num_indices, ssbo_size;
   unsigned int vao, vbo, ebo, ssbo;
 };

@@ -2,10 +2,14 @@ cmake_minimum_required(VERSION 4.2)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_LINKER_TYPE MOLD)
+
 set(PROJECT_NAME kepler)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_LINKER_TYPE MOLD)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 project(${PROJECT_NAME} VERSION 1.0 LANGUAGES CXX)
 include(FetchContent)
@@ -69,17 +73,23 @@ find_package(OpenSSL REQUIRED)
 
 add_executable(${PROJECT_NAME}
     src/camera.cpp
-    src/debug.cpp
     src/main.cpp
     src/mesh.cpp
+    src/misc.cpp
     src/satellite.cpp
     src/shader.cpp
     src/texture.cpp
     src/viz.cpp
-    src/ui.cpp
+    src/panel.cpp
 )
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_link_libraries(${PROJECT_NAME} perturb imgui glm glfw glad stb httplib OpenSSL::SSL OpenSSL::Crypto)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "${CMAKE_CURRENT_BINARY_DIR}/bin/assets"
+)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:

@@ -2,12 +2,12 @@
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
-#include <format>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include "ui.h"
+#include "misc.h"
+#include "panel.h"
 
 // Left aligned label, right aligned value
 void labelled_value(std::string label, std::string value) {
@@ -56,7 +56,7 @@ void InfoPanel::init(GLFWwindow *window) {
   style.FontScaleDpi = scale;
 
   ImGuiIO &io = ImGui::GetIO();
-  io.Fonts->AddFontFromFileTTF("../assets/Roboto-Regular.ttf", 18.0f);
+  io.Fonts->AddFontFromFileTTF(font_path().c_str(), 18.0f);
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init("#version 460");

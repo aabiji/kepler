@@ -2,7 +2,7 @@
 #include <glad/glad.h>
 #include <stb_image.h>
 
-#include "debug.h"
+#include "misc.h"
 #include "texture.h"
 
 Texture::~Texture() { glDeleteTextures(1, &id); }

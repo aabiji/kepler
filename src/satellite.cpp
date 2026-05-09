@@ -7,7 +7,7 @@
 #include <string_view>
 #include <utility>
 
-#include "debug.h"
+#include "misc.h"
 #include "satellite.h"
 
 const double DAY_SECONDS = 86400.0;
