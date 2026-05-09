@@ -137,8 +137,9 @@ void Visualizer::init_components() {
     try {
       std::string data = fetch_tle_data("../assets/active-satellites.tle");
       return load_satellite_data(data);
-    } catch (...) {
-      THROW_ERROR("Failed to load TLE data");
+    } catch (const std::exception &e) {
+      std::string str = e.what();
+      THROW_ERROR("Failed to load TLE data {}", str);
     }
   });
 }

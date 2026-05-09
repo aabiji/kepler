@@ -5,13 +5,14 @@
 #include <format>
 #include <glad/glad.h>
 #include <imgui.h>
-#include <numbers>
 
 #include "ui.h"
 
 // Left aligned label, right aligned value
 void labelled_value(std::string label, std::string value) {
+  ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.83, 0.83, 0.83, 1.0));
   ImGui::Text("%s", label.c_str());
+  ImGui::PopStyleColor();
 
   float text_width = ImGui::CalcTextSize(value.c_str()).x;
   ImGui::SameLine(ImGui::GetWindowWidth() - text_width -
@@ -57,14 +58,15 @@ void InfoUI::render(Satellite satellite) {
   ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
                           ImGuiCond_Always,
                           ImVec2(1.0f, 0.0f)); // Pivot to the top right
-  ImGui::SetNextWindowSize(ImVec2(350, 125), ImGuiCond_Always);
+  ImGui::SetNextWindowSize(ImVec2(350, 150), ImGuiCond_Always);
   ImGuiWindowFlags flags =
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
   ImGui::Begin("Window", nullptr, flags);
 
-  labelled_value(satellite.name, satellite.norad_id);
+  ImGui::Text("%s", satellite.name.c_str());
+  labelled_value("NORAD ID", satellite.norad_id);
   labelled_value(
       "Inclination",
       std::format("{}°", satellite.inclination * (180.0 / std::numbers::pi)));

@@ -71,7 +71,7 @@ void Framebuffer::bind(bool use) {
 
 void Framebuffer::clear() {
   GLuint clearValue = 0;
-  glClearBufferuiv(GL_COLOR, 1, &clearValue);
+  glClearBufferuiv(GL_COLOR, 0, &clearValue);
   glClear(GL_DEPTH_BUFFER_BIT);
 }
 

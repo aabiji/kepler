@@ -33,6 +33,28 @@ void handle_error(perturb::Sgp4Error err) {
     THROW_ERROR("ERROR: {}", msg);
 }
 
+std::string tle_epoch_to_utc(int epoch_year, double epoch_day) {
+  // TLE convention
+  int year = (epoch_year >= 57) ? (1900 + epoch_year) : (2000 + epoch_year);
+  int whole_days = static_cast<int>(epoch_day);
+  double fractional_day = epoch_day - whole_days;
+  int seconds = static_cast<int>(fractional_day * 86400.0);
+
+  std::tm tm = {};
+  tm.tm_year = year - 1900;
+  tm.tm_mon = 0;
+  tm.tm_mday = 1;
+
+  // Convert Jan 1 UTC to timestamp and add day-of-year offset
+  std::time_t t = timegm(&tm) + (whole_days - 1) * 86400 + seconds;
+  struct std::tm utc;
+  gmtime_r(&t, &utc);
+
+  char buffer[64];
+  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S UTC", &utc);
+  return buffer;
+}
+
 std::string fetch_tle_data(std::string cache_path) {
   auto duration = sysclock::now().time_since_epoch();
   auto seconds =
@@ -51,6 +73,7 @@ std::string fetch_tle_data(std::string cache_path) {
     if (!need_refresh) { // Read the rest of the file
       std::stringstream buffer;
       buffer << infile.rdbuf();
+      std::cout << "WHAT!\n";
       return buffer.str();
     }
   }
@@ -74,31 +97,34 @@ double parse_tle_exp(std::string s) {
 }
 
 std::vector<Satellite> load_satellite_data(std::string &str) {
+  std::stringstream ss(str);
+  std::string name, l1, l2;
   std::vector<Satellite> output;
-  int block_length = 24 + 69 * 2;
-  for (size_t i = 0; i < str.length(); i += block_length) {
-    perturb::TwoLineElement info;
-    std::string name = std::string(str.substr(i, 24));
-    std::string norad_id = std::string(str.substr(i + 26, 5));
 
-    info.ephemeris_type = str[i + 86];
-    info.epoch_year = std::stoi(str.substr(i + 41, 2));
-    info.epoch_day_of_year = std::stod(str.substr(i + 43, 12));
-    info.n_ddot = parse_tle_exp(str.substr(i + 65, 8));
-    info.b_star = parse_tle_exp(str.substr(i + 74, 8));
-    info.b_star = std::stod(str.substr(i + 74, 8));
-    info.element_set_number = std::stoi(str.substr(i + 87, 4));
-    info.inclination = std::stod(str.substr(i + 97, 8));
-    info.raan = std::stod(str.substr(i + 106, 8));
-    info.eccentricity = std::stod("0." + std::string(str.substr(i + 115, 7)));
-    info.arg_of_perigee = std::stod(str.substr(i + 123, 8));
-    info.mean_anomaly = std::stod(str.substr(i + 132, 8));
-    info.mean_motion = std::stod(str.substr(i + 141, 11));
-    info.revolution_number = std::stoi(str.substr(i + 152, 5));
+  while (std::getline(ss, name) && std::getline(ss, l1) &&
+         std::getline(ss, l2)) {
+    perturb::TwoLineElement info;
+    info.ephemeris_type = l1[62];
+    info.epoch_year = std::stoi(l1.substr(18, 2));
+    info.epoch_day_of_year = std::stod(l1.substr(20, 12));
+    info.n_ddot = parse_tle_exp(l1.substr(44, 8));
+    info.b_star = parse_tle_exp(l1.substr(53, 8));
+    info.element_set_number = std::stoi(l1.substr(64, 4));
+    info.inclination = std::stod(l2.substr(8, 8));
+    info.raan = std::stod(l2.substr(17, 8));
+    info.eccentricity = std::stod("0." + l2.substr(26, 7));
+    info.arg_of_perigee = std::stod(l2.substr(34, 8));
+    info.mean_anomaly = std::stod(l2.substr(43, 8));
+    info.mean_motion = std::stod(l2.substr(52, 11));
+    info.revolution_number = std::stoi(l2.substr(63, 5));
+
+    std::string date =
+        tle_epoch_to_utc(info.epoch_year, info.epoch_day_of_year);
+    std::string norad_id = l1.substr(2, 5);
 
     auto model = perturb::Satellite(info);
     handle_error(model.last_error());
-    output.push_back({name, norad_id, "", info.mean_motion, info.inclination,
+    output.push_back({name, norad_id, date, info.mean_motion, info.inclination,
                       info.eccentricity, model});
   }
   return output;
