@@ -15,8 +15,6 @@ TODO:
 - Stop hardcoding asset paths
     - Add a resource manager that'll verify the necessary files exist, map resource enum to actual paths, etc
 
-- Search for satellite by name or by norad ID. If found, treat the satellite as if it were selected
-
 - Render the predicted orbit of a satellite at a time
 
 - Handle exceptions

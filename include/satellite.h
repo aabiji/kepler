@@ -21,6 +21,8 @@ struct SharedInstanceData {
   std::mutex mutex;
 };
 
+std::string trim(const std::string &str);
+
 std::string fetch_tle_data(std::string cache_path);
 std::vector<Satellite> load_satellite_data(std::string &str);
 

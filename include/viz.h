@@ -44,6 +44,7 @@ private:
   void create_window(int width, int height);
   void set_callbacks();
   void init_components();
+  void render_ui();
   void render_scene();
   void render_satellites();
 
@@ -52,6 +53,7 @@ private:
 
   glm::mat4 projection;
   glm::vec3 sun_pos;
+  std::string search_error;
   SharedInstanceData circle_instances;
   std::vector<InstanceData> globe_instances;
 
@@ -62,7 +64,7 @@ private:
   std::jthread simulation_thread;
   std::future<std::vector<Satellite>> load_future;
 
-  InfoUI ui;
+  InfoPanel ui;
   Camera camera;
   Shader main_shader;
   Shader cubemap_shader;

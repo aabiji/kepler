@@ -13,6 +13,14 @@
 const double DAY_SECONDS = 86400.0;
 using sysclock = std::chrono::system_clock;
 
+std::string trim(const std::string &str) {
+  size_t first = str.find_first_not_of(" \t\n\r");
+  if (first == std::string::npos)
+    return ""; // String is all whitespace
+  size_t last = str.find_last_not_of(" \t\n\r");
+  return str.substr(first, (last - first + 1));
+}
+
 void handle_error(perturb::Sgp4Error err) {
   std::string msg = "";
 
@@ -73,7 +81,6 @@ std::string fetch_tle_data(std::string cache_path) {
     if (!need_refresh) { // Read the rest of the file
       std::stringstream buffer;
       buffer << infile.rdbuf();
-      std::cout << "WHAT!\n";
       return buffer.str();
     }
   }
@@ -124,8 +131,8 @@ std::vector<Satellite> load_satellite_data(std::string &str) {
 
     auto model = perturb::Satellite(info);
     handle_error(model.last_error());
-    output.push_back({name, norad_id, date, info.mean_motion, info.inclination,
-                      info.eccentricity, model});
+    output.push_back({trim(name), trim(norad_id), date, info.mean_motion,
+                      info.inclination, info.eccentricity, model});
   }
   return output;
 }

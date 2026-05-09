@@ -5,9 +5,10 @@
 
 #include "satellite.h"
 
-struct InfoUI {
-  ~InfoUI();
+struct InfoPanel {
+  ~InfoPanel();
   void init(GLFWwindow *window);
-  void render(Satellite satellite);
+  bool render(Satellite *satellite, std::string error);
   bool active();
+  std::string search_term;
 };

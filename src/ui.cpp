@@ -5,6 +5,7 @@
 #include <format>
 #include <glad/glad.h>
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include "ui.h"
 
@@ -23,15 +24,26 @@ void labelled_value(std::string label, std::string value) {
   ImGui::PopStyleColor();
 }
 
-InfoUI::~InfoUI() {
+bool search_bar(std::string &value) {
+  value = trim(value);
+  float button_width =
+      ImGui::CalcTextSize("GO").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+  ImGui::SetNextItemWidth(-button_width - ImGui::GetStyle().ItemSpacing.x);
+  ImGui::InputTextWithHint("##input", "Search by satellite name or NORAD ID",
+                           &value, ImGuiInputTextFlags_EnterReturnsTrue);
+  ImGui::SameLine();
+  return ImGui::Button("GO");
+}
+
+InfoPanel::~InfoPanel() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 }
 
-bool InfoUI::active() { return ImGui::GetIO().WantCaptureMouse; }
+bool InfoPanel::active() { return ImGui::GetIO().WantCaptureMouse; }
 
-void InfoUI::init(GLFWwindow *window) {
+void InfoPanel::init(GLFWwindow *window) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
@@ -50,32 +62,43 @@ void InfoUI::init(GLFWwindow *window) {
   ImGui_ImplOpenGL3_Init("#version 460");
 }
 
-void InfoUI::render(Satellite satellite) {
+bool InfoPanel::render(Satellite *satellite, std::string error) {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
   ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
                           ImGuiCond_Always,
-                          ImVec2(1.0f, 0.0f)); // Pivot to the top right
-  ImGui::SetNextWindowSize(ImVec2(350, 150), ImGuiCond_Always);
+                          ImVec2(1.0f, 0.0f)); // Fix to the top right
+  ImGui::SetNextWindowSize(ImVec2(350, satellite ? 175 : 55), ImGuiCond_Always);
   ImGuiWindowFlags flags =
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
   ImGui::Begin("Window", nullptr, flags);
 
-  ImGui::Text("%s", satellite.name.c_str());
-  labelled_value("NORAD ID", satellite.norad_id);
-  labelled_value(
-      "Inclination",
-      std::format("{}°", satellite.inclination * (180.0 / std::numbers::pi)));
-  labelled_value("Eccentricity", std::format("{}", satellite.eccentricity));
-  labelled_value("Mean motion",
-                 std::format("{} rev/day", satellite.mean_motion));
-  labelled_value("Epoch", satellite.epoch);
+  bool searching = search_bar(search_term);
+  if (error.length() > 0) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.0, 0.0, 1.0));
+    ImGui::Text("%s", error.c_str());
+    ImGui::PopStyleColor();
+  }
+
+  if (satellite != nullptr) {
+    ImGui::Separator();
+    ImGui::Text("%s", satellite->name.c_str());
+    labelled_value("NORAD ID", satellite->norad_id);
+    labelled_value("Inclination",
+                   std::format("{}°", satellite->inclination *
+                                          (180.0 / std::numbers::pi)));
+    labelled_value("Eccentricity", std::format("{}", satellite->eccentricity));
+    labelled_value("Mean motion",
+                   std::format("{} rev/day", satellite->mean_motion));
+    labelled_value("Epoch", satellite->epoch);
+  }
 
   ImGui::End();
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+  return searching;
 }

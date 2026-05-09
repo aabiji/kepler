@@ -130,6 +130,7 @@ void Visualizer::init_components() {
   globe_instances.push_back(
       InstanceData(glm::vec3(0.0), glm::vec3(1.0), false));
   selected_satellite = 0;
+  search_error = "";
 
   framebuffer.resize(state.window_size.x, state.window_size.y);
 
@@ -155,11 +156,6 @@ void Visualizer::run() {
     glViewport(0, 0, state.window_size.x, state.window_size.y);
 
     // clang-format off
-    if (state.keys.contains(GLFW_KEY_W)) camera.move_vertically(true);
-    if (state.keys.contains(GLFW_KEY_S)) camera.move_vertically(false);
-    if (state.keys.contains(GLFW_KEY_A)) camera.rotate_position(false);
-    if (state.keys.contains(GLFW_KEY_D)) camera.rotate_position(true);
-
     if (state.resized) {
       int w = state.window_size.x, h = state.window_size.y;
       projection = glm::perspective((float)std::numbers::pi / 4.0f,
@@ -168,6 +164,10 @@ void Visualizer::run() {
     }
 
     if (!ui.active()) {
+      if (state.keys.contains(GLFW_KEY_W)) camera.move_vertically(true);
+      if (state.keys.contains(GLFW_KEY_S)) camera.move_vertically(false);
+      if (state.keys.contains(GLFW_KEY_A)) camera.rotate_position(false);
+      if (state.keys.contains(GLFW_KEY_D)) camera.rotate_position(true);
       if (state.yscroll != 0) camera.zoom(state.yscroll < 0);
 
       if (state.mouse_pressed) {
@@ -216,6 +216,25 @@ void Visualizer::render_satellites() {
   circles.render(circle_instances.data);
 }
 
+void Visualizer::render_ui() {
+  Satellite *ptr =
+      selected_satellite != 0 ? &satellites[selected_satellite - 1] : nullptr;
+
+  if (ui.render(ptr, search_error)) {
+    auto it =
+        std::find_if(satellites.begin(), satellites.end(), [&](Satellite s) {
+          return s.name == ui.search_term || s.norad_id == ui.search_term;
+        });
+
+    if (it != satellites.end()) {
+      selected_satellite = std::distance(satellites.begin(), it) + 1;
+      search_error = "";
+    } else {
+      search_error = "No results";
+    }
+  }
+}
+
 void Visualizer::render_scene() {
   main_shader.use();
   main_shader.set<unsigned int>("selected_index", selected_satellite);
@@ -247,6 +266,5 @@ void Visualizer::render_scene() {
   skybox.render();
   glDepthFunc(GL_LESS);
 
-  if (selected_satellite != 0)
-    ui.render(satellites[selected_satellite]);
+  render_ui();
 }
