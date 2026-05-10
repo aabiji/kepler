@@ -85,11 +85,15 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_link_libraries(${PROJECT_NAME} perturb imgui glm glfw glad stb httplib OpenSSL::SSL OpenSSL::Crypto)
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/bin/assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-        "${CMAKE_CURRENT_BINARY_DIR}/bin/assets"
+        ${CMAKE_SOURCE_DIR}/assets
+        ${CMAKE_BINARY_DIR}/bin/assets
+    DEPENDS ${ASSETS}
 )
+add_custom_target(copy_assets ALL DEPENDS ${CMAKE_BINARY_DIR}/bin/assets)
+add_dependencies(kepler copy_assets)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:

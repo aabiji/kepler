@@ -26,7 +26,7 @@ std::string trim(const std::string &str);
 std::string fetch_tle_data(std::string cache_path);
 std::vector<Satellite> load_satellite_data(std::string &str);
 
-std::vector<glm::mat3> compute_trajectory(Satellite satellite);
+std::vector<glm::vec3> compute_trajectory(Satellite satellite);
 void simulate_satellites(std::stop_token token,
                          const std::vector<Satellite> satellites,
                          SharedInstanceData &shared);

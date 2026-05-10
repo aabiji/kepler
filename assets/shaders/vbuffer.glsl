@@ -7,6 +7,7 @@ layout(location = 3) in vec4 in_tangent;
 
 uniform mat4 view;
 uniform mat4 projection;
+uniform uint selected_index;
 
 struct InstanceData {
     mat4 model_matrix;
@@ -23,12 +24,12 @@ flat out uint instance_index;
 void main() {
     InstanceData d = data[gl_InstanceID];
 
-    // Adding 1 to differentiate between the background and the indexes
-    instance_index = gl_InstanceID + 1;
+    // Adding 2 to avoid colliding with the background or the globe
+    instance_index = gl_InstanceID + 2;
 
     // Render 2D shapes the same way regardless of camera orientation.
     // Objects that are further away will appear smaller.
-    float size = 0.0075;
+    float size = selected_index == (gl_InstanceID + 2) ? 0.005 : 0.0035;
     vec3 world_pos = d.model_matrix[3].xyz;
     vec4 view_pos = view * vec4(world_pos, 1.0);
     view_pos.xy += in_pos.xy * size;

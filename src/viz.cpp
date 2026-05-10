@@ -2,6 +2,7 @@
 #include <future>
 #include <glad/glad.h>
 
+#include "mesh.h"
 #include "misc.h"
 #include "satellite.h"
 #include "viz.h"
@@ -100,14 +101,14 @@ void Visualizer::set_callbacks() {
 }
 
 void Visualizer::init_components() {
-  ui.init(window);
-
   auto sp = shader_paths();
   auto et = earth_texture_paths();
+  auto positions = cube_positions();
 
   main_shader.init(sp[0], sp[1]);
   cubemap_shader.init(sp[2], sp[3]);
   framebuffer_shader.init(sp[4], sp[5]);
+  trajectory_shader.init(sp[6], sp[7]);
 
   earth_texture.init({et[0]});
   earth_normal_map.init({et[1]});
@@ -116,7 +117,7 @@ void Visualizer::init_components() {
 
   circles = create_circle_mesh(10);
   globe = create_unit_sphere(32, 32);
-  skybox.init();
+  skybox.update(positions);
 
   constellation_time_step = 1; // Propagate every 1 second
   sun_pos = glm::vec3((1.0 / 6371.0) * 149600000.0, 0.0, 0.0);
@@ -125,6 +126,7 @@ void Visualizer::init_components() {
   selected_satellite = 0;
   search_error = "";
 
+  panel.init(window);
   framebuffer.resize(state.window_size.x, state.window_size.y);
 
   load_future = std::async(std::launch::async, []() {
@@ -156,7 +158,7 @@ void Visualizer::run() {
       framebuffer.resize(w, h);
     }
 
-    if (!ui.active()) {
+    if (!panel.active()) {
       if (state.keys.contains(GLFW_KEY_W)) camera.move_vertically(true);
       if (state.keys.contains(GLFW_KEY_S)) camera.move_vertically(false);
       if (state.keys.contains(GLFW_KEY_A)) camera.rotate_position(false);
@@ -167,7 +169,12 @@ void Visualizer::run() {
         camera.rotate_orientation(state.cursor_delta, 0.001);
         // Opengl defines (0, 0) to be the bottom left
         int y = state.window_size.y - state.prev_cursor.y;
-        selected_satellite = framebuffer.read_value(state.prev_cursor.x, y);
+        size_t real_index = framebuffer.read_value(state.prev_cursor.x, y) - 2;
+        if (real_index < satellites.size()) {
+          selected_satellite = real_index + 2;
+          auto points = compute_trajectory(satellites[real_index]);
+          trajectory.update(points);
+        }
       }
     }
 
@@ -198,6 +205,7 @@ void Visualizer::render_satellites() {
   framebuffer_shader.use();
   framebuffer_shader.set<glm::mat4>("view", camera.view_matrix());
   framebuffer_shader.set<glm::mat4>("projection", projection);
+  main_shader.set<unsigned int>("selected_index", selected_satellite);
 
   glViewport(0, 0, state.window_size.x, state.window_size.y);
   framebuffer.clear();
@@ -210,18 +218,21 @@ void Visualizer::render_satellites() {
 }
 
 void Visualizer::render_ui() {
+  // Adding 2 to avoid colliding with the background and the globe
   Satellite *ptr =
-      selected_satellite != 0 ? &satellites[selected_satellite - 1] : nullptr;
+      selected_satellite >= 2 ? &satellites[selected_satellite - 2] : nullptr;
 
-  if (ui.render(ptr, search_error)) {
+  if (panel.render(ptr, search_error)) {
     auto it =
         std::find_if(satellites.begin(), satellites.end(), [&](Satellite s) {
-          return s.name == ui.search_term || s.norad_id == ui.search_term;
+          return s.name == panel.search_term || s.norad_id == panel.search_term;
         });
 
     if (it != satellites.end()) {
-      selected_satellite = std::distance(satellites.begin(), it) + 1;
       search_error = "";
+      selected_satellite = std::distance(satellites.begin(), it) + 2;
+      auto points = compute_trajectory(satellites[selected_satellite - 2]);
+      trajectory.update(points);
     } else {
       search_error = "No results";
     }
@@ -256,8 +267,15 @@ void Visualizer::render_scene() {
   cubemap_shader.set<glm::mat4>("view", view_no_translation);
   glDepthFunc(GL_LEQUAL);
   cubemap_texture.use(0);
-  skybox.render();
+  skybox.render(GL_TRIANGLES);
   glDepthFunc(GL_LESS);
+
+  // Render the predicted satellite orbital trajectory
+  trajectory_shader.use();
+  trajectory_shader.set<glm::mat4>("projection", projection);
+  trajectory_shader.set<glm::mat4>("view", camera.view_matrix());
+  if (selected_satellite >= 2)
+    trajectory.render(GL_LINE_STRIP);
 
   render_ui();
 }

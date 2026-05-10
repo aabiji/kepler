@@ -4,6 +4,19 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/matrix_interpolation.hpp>
 
+class PositionMesh {
+public:
+  ~PositionMesh();
+  PositionMesh() : initialized(false) {}
+  void update(std::vector<glm::vec3> &positions);
+  void render(int type);
+
+private:
+  unsigned int vao, vbo;
+  int num_positions;
+  bool initialized;
+};
+
 struct alignas(16) Vertex {
   glm::vec3 position;
   glm::vec2 uv;
@@ -18,13 +31,6 @@ struct alignas(16) InstanceData {
   int is_2d;
   InstanceData(glm::vec3 position, glm::vec3 scale, bool flat);
   InstanceData() {}
-};
-
-struct Skybox {
-  ~Skybox();
-  void init();
-  void render();
-  unsigned int vao, vbo;
 };
 
 class InstancedMesh {
@@ -50,3 +56,4 @@ private:
 
 InstancedMesh create_unit_sphere(int longitudes, int lattitudes);
 InstancedMesh create_circle_mesh(int num_fans);
+std::vector<glm::vec3> cube_positions();

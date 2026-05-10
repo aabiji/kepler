@@ -16,8 +16,9 @@ uniform sampler2D planet_specular_map;
 out vec4 fragment_color;
 
 vec4 phong_lighting() {
-    vec4 pixel = use_texture ? texture(planet_texture, texture_coords) : vec4(0.0, 1.0, 0.0, 1.0);
+    if (!use_texture) return vec4(0.0, 1.0, 0.0, 1.0);
 
+    vec4 pixel = texture(planet_texture, texture_coords);
     vec3 normal_value = texture(planet_normal_map, texture_coords).rgb;
     vec3 normal;
     if (length(tbn_matrix[0]) < 0.1) {
@@ -45,5 +46,5 @@ vec4 phong_lighting() {
 }
 
 void main() {
-    fragment_color = selected == 1 ? vec4(1.0, 1.0, 1.0, 1.0) : phong_lighting();
+    fragment_color = selected == 1 ? vec4(1.0, 0.6, 0.1, 1.0) : phong_lighting();
 }

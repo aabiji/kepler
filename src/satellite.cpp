@@ -147,74 +147,26 @@ perturb::JulianDate get_current_time() {
   return perturb::JulianDate(time);
 }
 
-// Calculate the Greenwich Mean Sidereal Time, which is the angle between
-// vernal equinox and the Earth's prime meridean, in radians.
-double gmst_time(perturb::JulianDate date) {
-  double full_date = date.jd + date.jd_frac;
-
-  // Julian centuries since the J2000 epoch
-  double jc = (full_date - 2451545.0) / 36525.0;
-
-  // Calculate GMST in seconds using the IAU 1982 polynomial formula
-  double seconds = 67310.54841 + (876600.0 * 3600.0 + 8640184.812866) * jc +
-                   0.093104 * jc * jc - 6.2e-6 * jc * jc * jc;
-
-  // Convert to radians [0, 2π]
-  double pi = std::numbers::pi;
-  double radians = (seconds * 2.0 * pi) / DAY_SECONDS;
-  double normalized = std::fmod(radians, (2.0 * pi));
-  return normalized < 0.0 ? normalized + 2.0 * pi : normalized;
-}
-
-std::tuple<glm::vec3, glm::vec3> propagate(perturb::Satellite model,
-                                           perturb::JulianDate time) {
+glm::vec3 propagate(perturb::Satellite model, perturb::JulianDate time) {
   perturb::StateVector s;
   handle_error(model.propagate(time, s));
-  glm::vec3 teme_position =
-      glm::vec3(s.position[0], s.position[1], s.position[2]);
-  glm::vec3 teme_velocity =
-      glm::vec3(s.velocity[0], s.velocity[1], s.velocity[2]);
-
-  // Rotates vectors in the XY plane about the Z axis
-  double angle = gmst_time(time);
-  double sin_a = std::sin(angle);
-  double cos_a = std::cos(angle);
-  glm::mat3 rotation =
-      glm::mat3(cos_a, -sin_a, 0.0, sin_a, cos_a, 0.0, 0.0, 0.0, 1.0);
-
-  // Account for the Earth's rotation by including the Coriolis term
-  glm::vec3 angular_velocity = glm::vec3(0.0, 0.0, 7.2921150e-5);
-
-  glm::vec3 itrs_position = rotation * teme_position;
-  glm::vec3 itrs_velocity =
-      rotation * teme_velocity - glm::cross(angular_velocity, itrs_position);
 
   // Scale kilometers to on screen coordinates by dividing by the Earth's radius
-  itrs_position *= 1.0 / 6371.0;
-  itrs_velocity *= 1.0 / 6371.0;
-
-  // ITRS defines the Z axis as pointing up, while we define the Y axis as pointing up
-  itrs_position = glm::vec3(itrs_position.x, itrs_position.z, itrs_position.y);
-  itrs_velocity = glm::vec3(itrs_velocity.x, itrs_velocity.z, itrs_velocity.y);
-
-  return std::make_tuple(itrs_position, itrs_velocity);
+  glm::vec3 position =
+      glm::vec3(s.position[0], s.position[1], s.position[2]) * (1.0f / 6371.0f);
+  // TEME defines the Z axis as pointing up, while we define the Y axis as pointing up
+  return glm::vec3(position.x, position.z, position.y);
 }
 
 // Predict the full trajectory of a satellite given an initial configuration
-std::vector<glm::mat3> compute_trajectory(Satellite satellite) {
+std::vector<glm::vec3> compute_trajectory(Satellite satellite) {
   double period = DAY_SECONDS / satellite.mean_motion;
   perturb::JulianDate time = get_current_time();
+  std::vector<glm::vec3> trajectory;
   double step = 30;
-
-  std::vector<glm::mat3> trajectory;
   for (double seconds = 0; seconds < period; seconds += step) {
-    auto [position, velocity] = propagate(satellite.model, time);
+    trajectory.push_back(propagate(satellite.model, time));
     time += step / DAY_SECONDS;
-
-    glm::mat3 packed;
-    packed = glm::row(packed, 0, position);
-    packed = glm::row(packed, 1, velocity);
-    trajectory.push_back(packed);
   }
   return trajectory;
 }
@@ -232,7 +184,7 @@ void simulate_satellites(std::stop_token token,
   auto step = [&]() {
     std::vector<InstanceData> temp;
     for (size_t i = 0; i < satellites.size(); i++) {
-      auto [position, _] = propagate(satellites[i].model, simulation_time);
+      glm::vec3 position = propagate(satellites[i].model, simulation_time);
       temp.push_back(InstanceData(position, glm::vec3(0.01, 0.01, 0.01), true));
     }
 

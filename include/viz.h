@@ -64,12 +64,14 @@ private:
   std::jthread simulation_thread;
   std::future<std::vector<Satellite>> load_future;
 
-  InfoPanel ui;
+  InfoPanel panel;
   Camera camera;
   Shader main_shader;
   Shader cubemap_shader;
   Shader framebuffer_shader;
-  Skybox skybox;
+  Shader trajectory_shader;
+  PositionMesh skybox;
+  PositionMesh trajectory;
   Texture cubemap_texture;
   Texture earth_texture;
   Texture earth_normal_map;

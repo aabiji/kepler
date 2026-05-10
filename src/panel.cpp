@@ -88,9 +88,7 @@ bool InfoPanel::render(Satellite *satellite, std::string error) {
     ImGui::Separator();
     ImGui::Text("%s", satellite->name.c_str());
     labelled_value("NORAD ID", satellite->norad_id);
-    labelled_value("Inclination",
-                   std::format("{}°", satellite->inclination *
-                                          (180.0 / std::numbers::pi)));
+    labelled_value("Inclination", std::format("{}°", satellite->inclination));
     labelled_value("Eccentricity", std::format("{}", satellite->eccentricity));
     labelled_value("Mean motion",
                    std::format("{} rev/day", satellite->mean_motion));

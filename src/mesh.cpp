@@ -7,51 +7,66 @@
 
 const float pi = std::numbers::pi;
 
-Skybox::~Skybox() {
-  glDeleteVertexArrays(1, &vao);
-  glDeleteBuffers(1, &vbo);
+std::vector<glm::vec3> cube_positions() {
+  // clang-format off
+  return {
+    // +X (right)
+    glm::vec3(1, -1, -1), glm::vec3(1, -1, 1), glm::vec3(1, 1, 1),
+    glm::vec3(1, -1, -1), glm::vec3(1, 1, 1), glm::vec3(1, 1, -1),
+
+    // -X (left)
+    glm::vec3(-1, -1, 1), glm::vec3(-1, -1, -1), glm::vec3(-1, 1, -1),
+    glm::vec3(-1, -1, 1), glm::vec3(-1, 1, -1), glm::vec3(-1, 1, 1),
+
+    // +Y (top)
+    glm::vec3(-1, 1, -1), glm::vec3(1, 1, -1), glm::vec3(1, 1, 1),
+    glm::vec3(-1, 1, -1), glm::vec3(1, 1, 1), glm::vec3(-1, 1, 1),
+
+    // -Y (bottom)
+    glm::vec3(-1, -1, 1), glm::vec3(1, -1, 1), glm::vec3(1, -1, -1),
+    glm::vec3(-1, -1, 1), glm::vec3(1, -1, -1), glm::vec3(-1, -1, -1),
+
+    // +Z (front)
+    glm::vec3(-1, -1, 1), glm::vec3(-1, 1, 1), glm::vec3(1, 1, 1),
+    glm::vec3(-1, -1, 1), glm::vec3(1, 1, 1), glm::vec3(1, -1, 1),
+
+    // -Z (back)
+    glm::vec3(1, -1, -1), glm::vec3(1, 1, -1), glm::vec3(-1, 1, -1),
+    glm::vec3(1, -1, -1), glm::vec3(-1, 1, -1), glm::vec3(-1, -1, -1)
+  };
+  // clang-format on
 }
 
-void Skybox::init() {
-  glm::vec3 cube_positions[] = {
-      // +X (right)
-      glm::vec3(1, -1, -1), glm::vec3(1, -1, 1), glm::vec3(1, 1, 1),
-      glm::vec3(1, -1, -1), glm::vec3(1, 1, 1), glm::vec3(1, 1, -1),
+PositionMesh::~PositionMesh() {
+  if (initialized) {
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+  }
+}
 
-      // -X (left)
-      glm::vec3(-1, -1, 1), glm::vec3(-1, -1, -1), glm::vec3(-1, 1, -1),
-      glm::vec3(-1, -1, 1), glm::vec3(-1, 1, -1), glm::vec3(-1, 1, 1),
+void PositionMesh::update(std::vector<glm::vec3> &positions) {
+  if (!initialized) {
+    glGenVertexArrays(1, &vao);
+    glCreateBuffers(1, &vbo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3),
+                          (void *)0);
+    glEnableVertexAttribArray(0);
+  }
 
-      // +Y (top)
-      glm::vec3(-1, 1, -1), glm::vec3(1, 1, -1), glm::vec3(1, 1, 1),
-      glm::vec3(-1, 1, -1), glm::vec3(1, 1, 1), glm::vec3(-1, 1, 1),
-
-      // -Y (bottom)
-      glm::vec3(-1, -1, 1), glm::vec3(1, -1, 1), glm::vec3(1, -1, -1),
-      glm::vec3(-1, -1, 1), glm::vec3(1, -1, -1), glm::vec3(-1, -1, -1),
-
-      // +Z (front)
-      glm::vec3(-1, -1, 1), glm::vec3(-1, 1, 1), glm::vec3(1, 1, 1),
-      glm::vec3(-1, -1, 1), glm::vec3(1, 1, 1), glm::vec3(1, -1, 1),
-
-      // -Z (back)
-      glm::vec3(1, -1, -1), glm::vec3(1, 1, -1), glm::vec3(-1, 1, -1),
-      glm::vec3(1, -1, -1), glm::vec3(-1, 1, -1), glm::vec3(-1, -1, -1)};
-
-  glGenVertexArrays(1, &vao);
-  glCreateBuffers(1, &vbo);
-
-  glBindVertexArray(vao);
+  initialized = true;
+  num_positions = positions.size();
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(cube_positions), cube_positions,
-               GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
-  glEnableVertexAttribArray(0);
+  glBufferData(GL_ARRAY_BUFFER, num_positions * sizeof(glm::vec3),
+               positions.data(), GL_STATIC_DRAW);
 }
 
-void Skybox::render() {
-  glBindVertexArray(vao);
-  glDrawArrays(GL_TRIANGLES, 0, 36);
+void PositionMesh::render(int type) {
+  if (initialized) {
+    glBindVertexArray(vao);
+    glDrawArrays(type, 0, num_positions);
+  }
 }
 
 InstanceData::InstanceData(glm::vec3 position, glm::vec3 scale, bool flat) {

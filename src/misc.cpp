@@ -71,10 +71,10 @@ std::vector<std::string> earth_texture_paths() {
 }
 
 std::vector<std::string> shader_paths() {
-  return {verify("assets/shaders/vmain.glsl"),
-          verify("assets/shaders/fmain.glsl"),
-          verify("assets/shaders/vbuffer.glsl"),
-          verify("assets/shaders/fbuffer.glsl"),
-          verify("assets/shaders/vcubemap.glsl"),
-          verify("assets/shaders/fcubemap.glsl")};
+  // clang-format off
+  return {verify("assets/shaders/vmain.glsl"), verify("assets/shaders/fmain.glsl"),
+          verify("assets/shaders/vcubemap.glsl"), verify("assets/shaders/fcubemap.glsl"),
+          verify("assets/shaders/vbuffer.glsl"), verify("assets/shaders/fbuffer.glsl"),
+          verify("assets/shaders/vstrip.glsl"), verify("assets/shaders/fstrip.glsl")};
+  // clang-format on
 }

@@ -26,11 +26,13 @@ layout(binding = 0, std430) readonly buffer b {
 
 void main() {
     InstanceData d = data[gl_InstanceID];
+    texture_coords = in_uv;
+    selected = selected_index == (gl_InstanceID + 2) ? 1 : 0;
 
     // Render 2D shapes the same way regardless of camera orientation.
     // Objects that are further away will appear smaller.
     if (d.is_2d == 1) {
-        float size = 0.0075;
+        float size = selected == 1 ? 0.005 : 0.0035;
         vec3 world_pos = d.model_matrix[3].xyz;
         vec4 view_pos = view * vec4(world_pos, 1.0);
 
@@ -52,7 +54,4 @@ void main() {
     T = normalize(T - N * dot(T, N));
     vec3 B = cross(N, T) * in_tangent.w;
     tbn_matrix = mat3(T, B, N);
-
-    texture_coords = in_uv;
-    selected = selected_index == (gl_InstanceID + 1) ? 1 : 0;
 }
